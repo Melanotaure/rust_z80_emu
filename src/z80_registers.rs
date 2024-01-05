@@ -1,6 +1,7 @@
 use crate::register::*;
 
 pub struct Z80Registers {
+    // Registers
     pub af: Register,
     pub bc: Register,
     pub de: Register,
@@ -9,6 +10,16 @@ pub struct Z80Registers {
     pub sp: Register,
     pub ix: Register,
     pub iy: Register,
+
+    // Extra registers
+    pub eaf: Register,
+    pub ebc: Register,
+    pub ede: Register,
+    pub ehl: Register,
+    pub epc: Register,
+    pub esp: Register,
+    pub eix: Register,
+    pub eiy: Register,
 }
 
 impl Z80Registers {
@@ -22,7 +33,36 @@ impl Z80Registers {
             sp: Register::new(),
             ix: Register::new(),
             iy: Register::new(),
+
+            eaf: Register::new(),
+            ebc: Register::new(),
+            ede: Register::new(),
+            ehl: Register::new(),
+            epc: Register::new(),
+            esp: Register::new(),
+            eix: Register::new(),
+            eiy: Register::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.af.set_reg16(0);
+        self.bc.set_reg16(0);
+        self.de.set_reg16(0);
+        self.hl.set_reg16(0);
+        self.pc.set_reg16(0);
+        self.sp.set_reg16(0);
+        self.ix.set_reg16(0);
+        self.iy.set_reg16(0);
+
+        self.eaf.set_reg16(0);
+        self.ebc.set_reg16(0);
+        self.ede.set_reg16(0);
+        self.ehl.set_reg16(0);
+        self.epc.set_reg16(0);
+        self.esp.set_reg16(0);
+        self.eix.set_reg16(0);
+        self.eiy.set_reg16(0);
     }
 
     pub fn print(&self) {

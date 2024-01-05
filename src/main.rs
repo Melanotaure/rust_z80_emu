@@ -1,5 +1,6 @@
-mod register;
-mod z80_registers;
+pub mod register;
+pub mod z80;
+pub mod z80_registers;
 
 use z80_registers::*;
 
