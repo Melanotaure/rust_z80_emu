@@ -1,9 +1,10 @@
-use crate::Z80Registers as regs;
+use crate::z80_registers;
+use z80_registers::Z80Registers;
 
 // Structure of the Z80 processor
 pub struct Z80 {
     // Registers
-    pub regs: regs,
+    pub regs: Z80Registers,
     // Address bus
     pub abus: u16,
     // Data bus
@@ -31,7 +32,7 @@ pub struct Z80 {
 impl Z80 {
     pub fn new() -> Self {
         Self {
-            regs: regs::new(),
+            regs: Z80Registers::new(),
             abus: 0_u16,
             dbus: 0_u8,
             nM1: true,
