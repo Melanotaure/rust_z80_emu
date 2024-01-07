@@ -33,4 +33,7 @@ fn main() {
     // Print the default new registers' values
     println!("\nReset Z80.\nCurrent values of registers.");
     z80.regs.print();
+
+    z80.instructions[0](&mut z80);
+    z80.instructions[1](&mut z80);
 }
