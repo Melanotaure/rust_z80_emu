@@ -25,7 +25,7 @@ fn main() {
     z80.regs.print();
 
     println!("\nHL <- HL + B");
-    z80.regs.hl.add_r16_i8(z80.regs.bc.get_reg8_h());
+    z80.regs.hl.add_r16_im8(z80.regs.bc.get_reg8_h());
     // Print r16+ i8 addition results
     z80.regs.print();
 
@@ -38,6 +38,7 @@ fn main() {
     z80.regs.pc.inc();
     z80.instructions[z80.regs.pc.get_reg16() as usize](&mut z80);
     z80.regs.pc.inc();
+    z80.regs.pc.dec();
     println!("regs after 2 instructions.");
     z80.regs.print();
 }

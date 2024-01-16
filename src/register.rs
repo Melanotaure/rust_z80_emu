@@ -40,11 +40,19 @@ impl Register {
         self.set_reg16(self.get_reg16() + rh.get_reg16());
     }
 
-    pub fn add_r16_i8(&mut self, rh: u8) {
+    pub fn add_r16_im8(&mut self, rh: u8) {
         self.set_reg16(self.get_reg16() + rh as u16);
     }
 
+    pub fn add_r16_im16(&mut self, rh: u16) {
+        self.set_reg16(self.get_reg16() + rh);
+    }
+
     pub fn inc(&mut self) {
-        self.add_r16_i8(1_u8);
+        self.add_r16_im8(1_u8);
+    }
+
+    pub fn dec(&mut self) {
+        self.add_r16_im16(0xffff);
     }
 }
