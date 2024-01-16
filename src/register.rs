@@ -37,7 +37,7 @@ impl Register {
     }
 
     pub fn add_r16_r16(&mut self, rh: &Register) {
-        self.set_reg16(self.get_reg16() + rh.get_reg16());
+        self.set_reg16(self.get_reg16().wrapping_add(rh.get_reg16()));
     }
 
     pub fn add_r16_im8(&mut self, rh: u8) {
@@ -45,7 +45,7 @@ impl Register {
     }
 
     pub fn add_r16_im16(&mut self, rh: u16) {
-        self.set_reg16(self.get_reg16() + rh);
+        self.set_reg16(self.get_reg16().wrapping_add(rh));
     }
 
     pub fn inc(&mut self) {
