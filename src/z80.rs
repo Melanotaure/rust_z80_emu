@@ -77,12 +77,12 @@ impl Z80 {
     // Instructions
     pub fn test1(&mut self) {
         self.regs.hl.set_reg16(0xCAFE);
-        self.regs.hl.add_r16_i8(1);
-        println!("Instruction -> HL: {:#06x}", self.regs.hl.get_reg16());
+    println!("Instruction: ld HL, 0xCAFE\n  HL: {:#06x}", self.regs.hl.get_reg16());
     }
 
     pub fn test2(&mut self) {
+        self.regs.hl.inc();
         self.regs.de.set_reg16(self.regs.hl.get_reg16());
-        println!("Instruction -> E: {:#04x}", self.regs.de.get_reg8_l());
+        println!("Instruction: inc HL\n             ld E, L\n  E: {:#04x}", self.regs.de.get_reg8_l());
     }
 }

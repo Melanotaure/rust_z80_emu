@@ -43,4 +43,8 @@ impl Register {
     pub fn add_r16_i8(&mut self, rh: u8) {
         self.set_reg16(self.get_reg16() + rh as u16);
     }
+
+    pub fn inc(&mut self) {
+        self.add_r16_i8(1_u8);
+    }
 }

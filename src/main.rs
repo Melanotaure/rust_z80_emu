@@ -34,6 +34,10 @@ fn main() {
     println!("\nReset Z80.\nCurrent values of registers.");
     z80.regs.print();
 
-    z80.instructions[0](&mut z80);
-    z80.instructions[1](&mut z80);
+    z80.instructions[z80.regs.pc.get_reg16() as usize](&mut z80);
+    z80.regs.pc.inc();
+    z80.instructions[z80.regs.pc.get_reg16() as usize](&mut z80);
+    z80.regs.pc.inc();
+    println!("regs after 2 instructions.");
+    z80.regs.print();
 }
