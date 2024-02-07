@@ -1,44 +1,12 @@
-pub mod register;
+pub mod registers;
+pub mod flags;
+pub mod bus;
+pub mod cycles;
 pub mod z80;
-pub mod z80_registers;
 
 use z80::*;
 
 fn main() {
     let mut z80 = Z80::new();
 
-    // Print the default new registers' values
-    println!("Default values of new registers.");
-    z80.regs.print();
-
-    // Set some registers
-    z80.regs.hl.set_reg16(0xfeed);
-    z80.regs.bc.set_reg8_h(0xbe);
-    z80.regs.bc.set_reg8_l(0xef);
-    // Print them
-    println!("\nRegisters values after setting HL and B and C.");
-    z80.regs.print();
-
-    println!("\nHL <- HL + BC");
-    z80.regs.hl.add_r16_r16(&z80.regs.bc);
-    // Print r16 + r16 addition results
-    z80.regs.print();
-
-    println!("\nHL <- HL + B");
-    z80.regs.hl.add_r16_im8(z80.regs.bc.get_reg8_h());
-    // Print r16+ i8 addition results
-    z80.regs.print();
-
-    z80.reset();
-    // Print the default new registers' values
-    println!("\nReset Z80.\nCurrent values of registers.");
-    z80.regs.print();
-
-    z80.instructions[z80.regs.pc.get_reg16() as usize](&mut z80);
-    z80.regs.pc.inc();
-    z80.instructions[z80.regs.pc.get_reg16() as usize](&mut z80);
-    z80.regs.pc.inc();
-    z80.regs.pc.dec();
-    println!("regs after 2 instructions.");
-    z80.regs.print();
 }
