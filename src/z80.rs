@@ -1,4 +1,5 @@
 use crate::cycles::CYCLES;
+use crate::flags;
 use crate::registers::Registers;
 use crate::bus::Bus;
 
@@ -76,6 +77,18 @@ impl Z80 {
         let nh = self.bus.read(self.regs.pc);
         let nn = u16::from_le_bytes([nl, nh]);
         nn
+    }
+
+    fn jp_nn(&mut self) {
+        let nn = self.get_nn();
+        self.regs.pc = nn.wrapping_sub(1);
+        // PC is incremented at the end
+    }
+
+    fn jr_e(&mut self) {
+        self.regs.inc_pc();
+        let e = self.bus.read(self.regs.pc);
+        self.regs.pc = self.regs.pc.wrapping_add((e as i8) as u16);
     }
 
     // Main function to run the CPU's instructions
@@ -345,9 +358,99 @@ impl Z80 {
                 self.bus.write(self.regs.sp, self.regs.h);
                 self.regs.h = n;
             },
+
+            // Jump group
+            // JP nn
+            0xC3 => self.jp_nn(),
+            // JP nz, nn
+            0xC2 => {
+                if !self.regs.flags.z {
+                    self.jp_nn();
+                }
+            },
+            // JP z
+            0xCA => {
+                if self.regs.flags.z {
+                    self.jp_nn();
+                }
+            }
+            // JP nc, nn
+            0xD2 => {
+                if !self.regs.flags.c {
+                    self.jp_nn();
+                }
+            },
+            // JP c, nn
+            0xDA => {
+                if self.regs.flags.c {
+                    self.jp_nn();
+                }
+            }
+            // JP po, nn
+            0xE2 => {
+                if !self.regs.flags.p {
+                    self.jp_nn();
+                }
+            },
+            // JP pe, nn
+            0xEA => {
+                if self.regs.flags.p {
+                    self.jp_nn();
+                }
+            },
+            // JP p, nn
+            0xF2 => {
+                if !self.regs.flags.s {
+                    self.jp_nn();
+                }
+            },
+            // JP m, nn
+            0xFA => {
+                if self.regs.flags.s {
+                    self.jp_nn();
+                }
+            },
+            // JR e
+            0x18 => self.jr_e(),
+            // JR z, e
+            0x28 => {
+                if self.regs.flags.z {
+                    self.jr_e();
+                }
+            },
+            // JR c, e
+            0x38 => {
+                if self.regs.flags.c {
+                    self.jr_e();
+                }
+            },
+            // DJNZ e
+            0x10 => {
+                self.regs.b = self.regs.b.wrapping_sub(1);
+                if self.regs.b != 0 {
+                    self.jr_e();
+                    cycles += 5;
+                }
+            },
+            // JR nz, e
+            0x20 => {
+                if !self.regs.flags.z {
+                    self.jr_e();
+                }
+            },
+            // JR nc, nn
+            0x30 => {
+                if !self.regs.flags.c {
+                    self.jr_e();
+                }
+            },
+            // JP (HL)
+            0xE9 => self.regs.pc = self.regs.get_hl().wrapping_sub(1),
+            
             _ => {
                 println!("Unknown instruction.");
             },
+            
         }
         self.regs.inc_pc();
         cycles
