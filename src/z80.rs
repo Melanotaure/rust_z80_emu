@@ -140,7 +140,7 @@ impl Z80 {
             0x73 => self.bus.write(self.regs.get_hl(), self.regs.e),  // LD (HL), E
             0x74 => self.bus.write(self.regs.get_hl(), self.regs.h),  // LD (HL), H
             0x75 => self.bus.write(self.regs.get_hl(), self.regs.l),  // LD (HL), L
-            // 0x76 => HALT
+            // 0x76 => HALT treated elsewhere
             0x77 => self.bus.write(self.regs.get_hl(), self.regs.a),  // LD (HL), A
             // Destination reg = a
             0x78 => self.regs.a = self.regs.b,  // LD A, B
@@ -151,6 +151,47 @@ impl Z80 {
             0x7D => self.regs.a = self.regs.l,  // LD A, L
             0x7E => self.regs.a = self.bus.read(self.regs.get_hl()), // LD A, (HL)
             0x7F => {},                         // LD A, A
+            // LD r, n
+            0x06 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.b = n;
+            },
+            0x16 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.d = n;
+            },
+            0x26 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.h = n;
+            },
+            0x36 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.bus.write(self.regs.get_hl(), n);
+            },
+            0x0E => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.c = n;
+            },
+            0x1E => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.e = n;
+            },
+            0x2E => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.l = n;
+            },
+            0x3E => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.regs.a = n;
+            }
 
             _ => {
                 println!("Unknown instruction.");
