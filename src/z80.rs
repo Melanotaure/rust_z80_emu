@@ -69,6 +69,15 @@ impl Z80 {
         self._clock = 0;
     }
 
+    fn get_nn(&mut self) -> u16 {
+        self.regs.inc_pc();
+        let nl = self.bus.read(self.regs.pc);
+        self.regs.inc_pc();
+        let nh = self.bus.read(self.regs.pc);
+        let nn = u16::from_le_bytes([nl, nh]);
+        nn
+    }
+
     // Main function to run the CPU's instructions
     pub fn execute(&mut self) -> u8 {
         let instr = self.bus.read(self.regs.pc);
@@ -192,10 +201,153 @@ impl Z80 {
                 let n = self.bus.read(self.regs.pc);
                 self.regs.a = n;
             }
+            // LD (BC), A
+            0x02 => self.bus.write(self.regs.get_bc(), self.regs.a),
+            // LD (DE), A
+            0x12 => self.bus.write(self.regs.get_de(), self.regs.a),
+            // LD (nn), A
+            0x32 => {
+                let nn = self.get_nn();
+                self.bus.write( nn, self.regs.a);
+            },
+            // LD A, (BC)
+            0x0A => self.regs.a = self.bus.read(self.regs.get_bc()),
+            // LD A, (DE)
+            0x1A => self.regs.a = self.bus.read(self.regs.get_de()),
+            // LD A, (nn)
+            0x3A => {
+                let nn = self.get_nn();
+                self.regs.a = self.bus.read(nn);
+            },
 
+            // 16-bit Load Group
+            // LD BC, nn
+            0x01 => {
+                let nn = self.get_nn();
+                self.regs.set_bc(nn);
+            },
+            // LD DE, nn
+            0x11 => {
+                let nn = self.get_nn();
+                self.regs.set_de(nn);
+            },
+            // LD HL, nn
+            0x21 => {
+                let nn = self.get_nn();
+                self.regs.set_hl(nn);
+            },
+            // LD SP, nn
+            0x31 => {
+                let nn = self.get_nn();
+                self.regs.sp = nn;
+            },
+            // LD HL, (nn)
+            0x2A => {
+                let nn = self.get_nn();
+                self.regs.l = self.bus.read(nn);
+                self.regs.h = self.bus.read(nn.wrapping_add(1));
+            },
+            // LD (nn), HL
+            0x22 => {
+                let nn = self.get_nn();
+                self.bus.write(nn, self.regs.l);
+                self.bus.write(nn.wrapping_add(1), self.regs.h);
+            },
+            // LD SP, HL
+            0xF9 => self.regs.sp = self.regs.get_hl(),
+            // PUSH BC
+            0xC5 => {
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.b);
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.c);
+            },
+            // PUSH DE
+            0xD5 => {
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.d);
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.e);
+            },
+            // PUSH HL
+            0xE5 => {
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.h);
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.l);
+            },
+            // PUSH AF
+            0xF5 => {
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.a);
+                self.regs.dec_sp();
+                self.bus.write(self.regs.sp, self.regs.flags.to_byte());
+            },
+            // POP BC
+            0xC1 => {
+                self.regs.c = self.bus.read(self.regs.sp);
+                self.regs.inc_sp();
+                self.regs.b = self.bus.read(self.regs.sp);
+            },
+            // POP DE
+            0xD1 => {
+                self.regs.e = self.bus.read(self.regs.sp);
+                self.regs.inc_sp();
+                self.regs.d = self.bus.read(self.regs.sp);
+            },
+            // POP HL
+            0xE1 => {
+                self.regs.l = self.bus.read(self.regs.sp);
+                self.regs.inc_sp();
+                self.regs.h = self.bus.read(self.regs.sp);
+            },
+            // POP AF
+            0xF1 => {
+                let f = self.bus.read(self.regs.sp);
+                self.regs.flags.from_byte(f);
+                self.regs.inc_sp();
+                self.regs.a = self.bus.read(self.regs.sp);
+            },
+            // Exchange
+            // EX DE, HL
+            0xEB => {
+                let de = self.regs.get_de();
+                let hl = self.regs.get_hl();
+                self.regs.set_de(hl);
+                self.regs.set_hl(de);
+            },
+            // EX AF,AF'
+            0x08 => {
+                let af = self.regs.get_af();
+                let eaf = self.regs.eaf;
+                self.regs.set_af(eaf);
+                self.regs.eaf = af;
+            },
+            // EXX
+            0xD9 => {
+                let tmp = self.regs.get_bc();
+                self.regs.set_bc(self.regs.ebc);
+                self.regs.ebc = tmp;
+                let tmp = self.regs.get_de();
+                self.regs.set_de(self.regs.ede);
+                self.regs.ede = tmp;
+                let tmp = self.regs.get_hl();
+                self.regs.set_hl(self.regs.ehl);
+                self.regs.ehl = tmp;
+            },
+            // EX (SP), HL
+            0xE3 => {
+                let n = self.bus.read(self.regs.sp);
+                self.bus.write(self.regs.sp, self.regs.l);
+                self.regs.l = n;
+                self.regs.inc_sp();
+                let n = self.bus.read(self.regs.sp);
+                self.bus.write(self.regs.sp, self.regs.h);
+                self.regs.h = n;
+            },
             _ => {
                 println!("Unknown instruction.");
-            }
+            },
         }
         self.regs.inc_pc();
         cycles

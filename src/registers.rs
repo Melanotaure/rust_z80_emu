@@ -17,6 +17,11 @@ pub struct Registers {
     pub sp: u16,
     pub pc: u16,
     pub flags: Flags,
+    // Extra regs
+    pub eaf: u16,
+    pub ebc: u16,
+    pub ede: u16,
+    pub ehl: u16,
 }
 
 impl Registers {
@@ -38,6 +43,10 @@ impl Registers {
             sp: 0,
             pc: 0,
             flags: Flags::new(),
+            eaf: 0,
+            ebc: 0,
+            ede: 0,
+            ehl: 0,
         }
     }
 
@@ -105,6 +114,14 @@ impl Registers {
 
     pub fn dec_pc(&mut self) {
         self.pc = self.pc.wrapping_sub(1);
+    }
+
+    pub fn inc_sp(&mut self) {
+        self.sp = self.sp.wrapping_add(1);
+    }
+
+    pub fn dec_sp(&mut self) {
+        self.sp = self.sp.wrapping_sub(1);
     }
 
     pub fn reset(&mut self) {
