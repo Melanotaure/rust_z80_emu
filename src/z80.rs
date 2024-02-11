@@ -2,6 +2,12 @@ use crate::bus::{read_io, write_io, Bus};
 use crate::cycles::CYCLES;
 use crate::registers::Registers;
 
+enum BitOp {
+    AND,
+    XOR,
+    OR,
+}
+
 // Structure of the Z80 processor
 pub struct Z80 {
     // Registers
@@ -120,6 +126,103 @@ impl Z80 {
         self.regs.dec_sp();
         self.bus.write(self.regs.sp, pcl);
         self.regs.pc = u16::from_le_bytes([addr, 0x00]);
+    }
+
+    fn add_a_r(&mut self, data: u8) {
+        let a = self.regs.a;
+        let r = a.wrapping_add(data);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = (a & 0x0F) + (data & 0x0F) > 0x0F;
+        self.regs.flags.p = (a as i8).overflowing_add(data as i8).1;
+        self.regs.flags.n = false;
+        self.regs.flags.c = (a as u16) + (data as u16) > 0x00FF;
+        self.regs.a = r;
+    }
+
+    fn adc_a_r(&mut self, data: u8) {
+        let c = self.regs.flags.c as u8;
+        let a = self.regs.a;
+        let r = a.wrapping_add(data).wrapping_add(c);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = (a & 0x0F) + (data & 0x0F) + c > 0x0F;
+        self.regs.flags.p = (a as i8).overflowing_add((data.wrapping_add(c)) as i8).1;
+        self.regs.flags.n = false;
+        self.regs.flags.c = (a as u16) + (data as u16) + (c as u16) > 0x00FF;
+        self.regs.a = r;
+    }
+
+    fn sub_a_r(&mut self, data: u8) {
+        let a = self.regs.a;
+        let r = a.wrapping_sub(data);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = (a & 0x0F) < (data & 0x0F);
+        self.regs.flags.p = (a as i8).overflowing_sub(data as i8).1;
+        self.regs.flags.n = true;
+        self.regs.flags.c = (a as u16) < (data as u16);
+        self.regs.a = r;
+    }
+
+    fn sbc_a_r(&mut self, data: u8) {
+        let c = self.regs.flags.c as u8;
+        let a = self.regs.a;
+        let r = a.wrapping_sub(data).wrapping_sub(c);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = (a & 0x0F) < (data & 0x0F).wrapping_add(c);
+        self.regs.flags.p = (a as i8).overflowing_sub((data.wrapping_add(c)) as i8).1;
+        self.regs.flags.n = true;
+        self.regs.flags.c = (a as u16) < ((data as u16) + (c as u16));
+        self.regs.a = r;
+    }
+
+    fn bit_op_a_r(&mut self, bit_op: BitOp, data: u8) {
+        let a = self.regs.a;
+        let r = match bit_op {
+            BitOp::AND => a & data,
+            BitOp::XOR => a ^ data,
+            BitOp::OR => a | data,
+        };
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = true;
+        self.regs.flags.p = r.count_ones() & 0x01 == 0;
+        self.regs.flags.n = false;
+        self.regs.flags.c = false;
+        self.regs.a = r;
+    }
+
+    fn cp_r(&mut self, data: u8) {
+        let a = self.regs.a;
+        let r = a.wrapping_sub(data);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = (a & 0x0F) < (data & 0x0F);
+        self.regs.flags.p = (a as i8).overflowing_sub(data as i8).1;
+        self.regs.flags.n = true;
+        self.regs.flags.c = (a as u16) < (data as u16);
+    }
+
+    fn inc_r(&mut self, data: u8) -> u8 {
+        let r = data.wrapping_add(1);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = data & 0x0F == 0x0F;
+        self.regs.flags.p = data == 0x7F;
+        self.regs.flags.n = false;
+        r
+    }
+
+    fn dec_r(&mut self, data: u8) -> u8 {
+        let r = data.wrapping_sub(1);
+        self.regs.flags.z = r == 0x00;
+        self.regs.flags.s = (r as i8) < 0;
+        self.regs.flags.h = data & 0x1F == 0x10;
+        self.regs.flags.p = data == 0x80;
+        self.regs.flags.n = true;
+        r
     }
 
     // Main function to run the CPU's instructions
@@ -636,6 +739,186 @@ impl Z80 {
                 let addr = u16::from_le_bytes([n, self.regs.a]);
                 write_io(addr, self.regs.a);
             }
+
+            // 8-bit arithmetic group
+            // LD A, r
+            0x80 => self.add_a_r(self.regs.b),
+            0x81 => self.add_a_r(self.regs.c),
+            0x82 => self.add_a_r(self.regs.d),
+            0x83 => self.add_a_r(self.regs.e),
+            0x84 => self.add_a_r(self.regs.h),
+            0x85 => self.add_a_r(self.regs.l),
+            0x86 => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.add_a_r(data);
+            }
+            0x87 => self.add_a_r(self.regs.a),
+            // ADC A, r
+            0x88 => self.adc_a_r(self.regs.b),
+            0x89 => self.adc_a_r(self.regs.c),
+            0x8A => self.adc_a_r(self.regs.d),
+            0x8B => self.adc_a_r(self.regs.e),
+            0x8C => self.adc_a_r(self.regs.h),
+            0x8D => self.adc_a_r(self.regs.l),
+            0x8E => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.adc_a_r(data);
+            }
+            0x8F => self.adc_a_r(self.regs.a),
+            // SUB A, r
+            0x90 => self.sub_a_r(self.regs.b),
+            0x91 => self.sub_a_r(self.regs.c),
+            0x92 => self.sub_a_r(self.regs.d),
+            0x93 => self.sub_a_r(self.regs.e),
+            0x94 => self.sub_a_r(self.regs.h),
+            0x95 => self.sub_a_r(self.regs.l),
+            0x96 => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.sub_a_r(data);
+            }
+            0x97 => self.sub_a_r(self.regs.a),
+            // SBC A, r
+            0x98 => self.sbc_a_r(self.regs.b),
+            0x99 => self.sbc_a_r(self.regs.c),
+            0x9A => self.sbc_a_r(self.regs.d),
+            0x9B => self.sbc_a_r(self.regs.e),
+            0x9C => self.sbc_a_r(self.regs.h),
+            0x9D => self.sbc_a_r(self.regs.l),
+            0x9E => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.sbc_a_r(data);
+            }
+            0x9F => self.sbc_a_r(self.regs.a),
+            // AND A, r
+            0xA0 => self.bit_op_a_r(BitOp::AND, self.regs.b),
+            0xA1 => self.bit_op_a_r(BitOp::AND, self.regs.c),
+            0xA2 => self.bit_op_a_r(BitOp::AND, self.regs.d),
+            0xA3 => self.bit_op_a_r(BitOp::AND, self.regs.e),
+            0xA4 => self.bit_op_a_r(BitOp::AND, self.regs.h),
+            0xA5 => self.bit_op_a_r(BitOp::AND, self.regs.l),
+            0xA6 => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.bit_op_a_r(BitOp::AND, data);
+            }
+            0xA7 => self.bit_op_a_r(BitOp::AND, self.regs.a),
+            // XOR A, r
+            0xA8 => self.bit_op_a_r(BitOp::XOR, self.regs.b),
+            0xA9 => self.bit_op_a_r(BitOp::XOR, self.regs.c),
+            0xAA => self.bit_op_a_r(BitOp::XOR, self.regs.d),
+            0xAB => self.bit_op_a_r(BitOp::XOR, self.regs.e),
+            0xAC => self.bit_op_a_r(BitOp::XOR, self.regs.h),
+            0xAD => self.bit_op_a_r(BitOp::XOR, self.regs.l),
+            0xAE => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.bit_op_a_r(BitOp::XOR, data);
+            }
+            0xAF => self.bit_op_a_r(BitOp::XOR, self.regs.a),
+            // OR A, r
+            0xB0 => self.bit_op_a_r(BitOp::OR, self.regs.b),
+            0xB1 => self.bit_op_a_r(BitOp::OR, self.regs.c),
+            0xB2 => self.bit_op_a_r(BitOp::OR, self.regs.d),
+            0xB3 => self.bit_op_a_r(BitOp::OR, self.regs.e),
+            0xB4 => self.bit_op_a_r(BitOp::OR, self.regs.h),
+            0xB5 => self.bit_op_a_r(BitOp::OR, self.regs.l),
+            0xB6 => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.bit_op_a_r(BitOp::OR, data);
+            }
+            0xB7 => self.cp_r(self.regs.a),
+            // CP A, r
+            0xB8 => self.cp_r(self.regs.b),
+            0xB9 => self.cp_r(self.regs.c),
+            0xBA => self.cp_r(self.regs.d),
+            0xBB => self.cp_r(self.regs.e),
+            0xBC => self.cp_r(self.regs.h),
+            0xBD => self.cp_r(self.regs.l),
+            0xBE => {
+                let addr = self.regs.get_hl();
+                let data = self.bus.read(addr);
+                self.cp_r(data);
+            }
+            0xBF => self.cp_r(self.regs.a),
+            // ADD a, n
+            0xC6 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.add_a_r(n);
+            }
+            // SUB A, n
+            0xD6 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.sub_a_r(n);
+            }
+            // AND A, n
+            0xE6 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.bit_op_a_r(BitOp::AND, n);
+            }
+            // OR A, n
+            0xF6 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.bit_op_a_r(BitOp::OR, n);
+            }
+            // ADC A, n
+            0xCE => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.adc_a_r(n);
+            }
+            // SBC A, n
+            0xDE => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.sbc_a_r(n);
+            }
+            // XOR a, n
+            0xEE => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.bit_op_a_r(BitOp::XOR, n);
+            }
+            // CP A, n
+            0xFE => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                self.cp_r(n);
+            }
+            // INC r
+            0x04 => self.regs.b = self.inc_r(self.regs.b),
+            0x14 => self.regs.d = self.inc_r(self.regs.d),
+            0x24 => self.regs.h = self.inc_r(self.regs.h),
+            0x34 => {
+                let mut n = self.bus.read(self.regs.get_hl());
+                n = self.inc_r(n);
+                self.bus.write(self.regs.get_hl(), n);
+            }
+            0x0C => self.regs.c = self.inc_r(self.regs.c),
+            0x1C => self.regs.e = self.inc_r(self.regs.e),
+            0x2C => self.regs.l = self.inc_r(self.regs.l),
+            0x3C => self.regs.a = self.inc_r(self.regs.a),
+            // DEC r
+            0x05 => self.regs.b = self.dec_r(self.regs.b),
+            0x15 => self.regs.d = self.dec_r(self.regs.d),
+            0x25 => self.regs.h = self.dec_r(self.regs.h),
+            0x35 => {
+                let mut n = self.bus.read(self.regs.get_hl());
+                n = self.dec_r(n);
+                self.bus.write(self.regs.get_hl(), n);
+            }
+            0x0D => self.regs.c = self.dec_r(self.regs.c),
+            0x1D => self.regs.e = self.dec_r(self.regs.e),
+            0x2D => self.regs.l = self.dec_r(self.regs.l),
+            0x3D => self.regs.a = self.dec_r(self.regs.a),
             _ => {
                 println!("Unknown instruction.");
             }
