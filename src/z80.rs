@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::bus::{read_io, write_io, Bus};
 use crate::cycles::CYCLES;
 use crate::registers::Registers;
 
@@ -118,7 +118,7 @@ impl Z80 {
         self.regs.dec_sp();
         self.bus.write(self.regs.sp, pch);
         self.regs.dec_sp();
-        self.bus.write(self.regs.sp, pch);
+        self.bus.write(self.regs.sp, pcl);
         self.regs.pc = u16::from_le_bytes([addr, 0x00]);
     }
 
@@ -621,6 +621,21 @@ impl Z80 {
             0xF7 => self.rst(0x30),
             0xFF => self.rst(0x38),
 
+            // Input & Output Group
+            // IN A, (n)
+            0xDB => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                let addr = u16::from_le_bytes([n, self.regs.a]);
+                self.regs.a = read_io(addr);
+            }
+            // OUT (n), A
+            0xD3 => {
+                self.regs.inc_pc();
+                let n = self.bus.read(self.regs.pc);
+                let addr = u16::from_le_bytes([n, self.regs.a]);
+                write_io(addr, self.regs.a);
+            }
             _ => {
                 println!("Unknown instruction.");
             }

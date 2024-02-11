@@ -23,3 +23,9 @@ impl Bus {
         self.memory.fill(0_u8);
     }
 }
+
+pub fn read_io(addr: u16) -> u8 {
+    0x00
+}
+
+pub fn write_io(addr: u16, data: u8) {}
