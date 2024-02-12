@@ -27,6 +27,8 @@ pub struct Z80 {
     pub n_int: bool,
     pub n_nmi: bool,
     pub n_reset: bool,
+    pub iff1: bool,
+    pub iff2: bool,
     // CPU bus control
     pub n_busrq: bool,
     pub n_busack: bool,
@@ -50,6 +52,8 @@ impl Z80 {
             n_int: true,
             n_nmi: true,
             n_reset: true,
+            iff1: false,
+            iff2: false,
             n_busrq: true,
             n_busack: true,
             _clock: 0_u64,
@@ -69,6 +73,8 @@ impl Z80 {
         self.n_nmi = true;
         self.n_rd = true;
         self.n_reset = true;
+        self.iff1 = false;
+        self.iff2 = false;
         self.n_rfsh = true;
         self.n_wait = true;
         self.n_wr = true;
@@ -235,6 +241,47 @@ impl Z80 {
         self.regs.set_hl(hl.wrapping_add(reg));
     }
 
+    fn daa(&mut self) {
+        let a = self.regs.a;
+        let rl = if self.regs.a & 0x0F > 0x09 || self.regs.flags.h {
+            0x06_u8
+        } else {
+            0x00_u8
+        };
+        let rh = if self.regs.a & 0xF0 > 0x90 || self.regs.flags.c {
+            0x60u8
+        } else {
+            0x00_u8
+        };
+        if !self.regs.flags.n {
+            (self.regs.a, self.regs.flags.c) = a.overflowing_add(rh | rl);
+        } else {
+            (self.regs.a, self.regs.flags.c) = a.overflowing_sub(rh | rl);
+        }
+        self.regs.flags.s = (self.regs.a as i8) < 0;
+        self.regs.flags.z = self.regs.a == 0;
+        self.regs.flags.h = rl == 0x06_u8;
+        self.regs.flags.p = self.regs.a.count_ones() & 0x01 == 0;
+        self.regs.flags.c = rh == 0x60_u8;
+    }
+
+    fn cpl(&mut self) {
+        self.regs.a = !self.regs.a;
+        self.regs.flags.h = true;
+        self.regs.flags.n = true;
+    }
+
+    fn ccf(&mut self) {
+        self.regs.flags.h = self.regs.flags.c;
+        self.regs.flags.n = false;
+        self.regs.flags.c = !self.regs.flags.c;
+    }
+
+    fn scf(&mut self) {
+        self.regs.flags.h = false;
+        self.regs.flags.n = false;
+        self.regs.flags.c = true;
+    }
     // Main function to run the CPU's instructions
     pub fn execute(&mut self) -> u8 {
         let instr = self.bus.read(self.regs.pc);
@@ -982,9 +1029,34 @@ impl Z80 {
                 self.regs.a =
                     (a.rotate_right(1) & 0x7F) | (if self.regs.flags.c { 0x80 } else { 0x00 });
             }
-            _ => {
-                println!("Unknown instruction.");
+            // DAA
+            0x27 => self.daa(),
+            // CPL A
+            0x2F => self.cpl(),
+            // CCF
+            0x3F => self.ccf(),
+            // SCF
+            0x37 => self.scf(),
+            // HALT
+            0x76 => {
+                self.regs.dec_pc();
+                self.n_halt = false;
             }
+            // DI
+            0xF3 => {
+                self.iff1 = false;
+                self.iff2 = false;
+            }
+            // EI
+            0xFB => {
+                self.iff1 = true;
+                self.iff2 = true;
+            }
+            // Special instructions
+            0xCB => todo!(), // Bit istructions
+            0xDD => todo!(), // IX instructions
+            0xED => todo!(), // Misc. instructions
+            0xFD => todo!(), // IY instructions
         }
         self.regs.inc_pc();
         cycles
