@@ -109,6 +109,7 @@ impl Z80 {
         self.regs.inc_pc();
         pch = self.bus.read(self.regs.pc);
         self.regs.pc = u16::from_le_bytes([pcl, pch]);
+        self.regs.dec_pc();
     }
 
     fn ret(&mut self) {
@@ -126,6 +127,7 @@ impl Z80 {
         self.regs.dec_sp();
         self.bus.write(self.regs.sp, pcl);
         self.regs.pc = u16::from_le_bytes([addr, 0x00]);
+        self.regs.dec_pc();
     }
 
     fn add_a_r(&mut self, data: u8) {
