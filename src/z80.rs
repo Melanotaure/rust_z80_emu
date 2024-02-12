@@ -227,6 +227,14 @@ impl Z80 {
         r
     }
 
+    fn add_hl_rr(&mut self, reg: u16) {
+        let hl = self.regs.get_hl();
+        self.regs.flags.h = (hl & 0x0FFF) + (reg & 0x0FFF) > 0x0FFF;
+        self.regs.flags.n = false;
+        self.regs.flags.c = hl as u32 + reg as u32 > 0xFFFF;
+        self.regs.set_hl(hl.wrapping_add(reg));
+    }
+
     // Main function to run the CPU's instructions
     pub fn execute(&mut self) -> u8 {
         let instr = self.bus.read(self.regs.pc);
@@ -921,6 +929,23 @@ impl Z80 {
             0x1D => self.regs.e = self.dec_r(self.regs.e),
             0x2D => self.regs.l = self.dec_r(self.regs.l),
             0x3D => self.regs.a = self.dec_r(self.regs.a),
+
+            // 16-bit arithmetic group
+            // ADD HL, rr
+            0x09 => self.add_hl_rr(self.regs.get_bc()),
+            0x19 => self.add_hl_rr(self.regs.get_de()),
+            0x29 => self.add_hl_rr(self.regs.get_hl()),
+            0x39 => self.add_hl_rr(self.regs.sp),
+            // INC rr
+            0x03 => self.regs.set_bc(self.regs.get_bc().wrapping_add(1)),
+            0x13 => self.regs.set_de(self.regs.get_de().wrapping_add(1)),
+            0x23 => self.regs.set_hl(self.regs.get_hl().wrapping_add(1)),
+            0x33 => self.regs.sp = self.regs.sp.wrapping_add(1),
+            // DEC rr
+            0x0B => self.regs.set_bc(self.regs.get_bc().wrapping_sub(1)),
+            0x1B => self.regs.set_de(self.regs.get_de().wrapping_sub(1)),
+            0x2B => self.regs.set_hl(self.regs.get_hl().wrapping_sub(1)),
+            0x3B => self.regs.sp = self.regs.sp.wrapping_sub(1),
             _ => {
                 println!("Unknown instruction.");
             }
