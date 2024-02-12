@@ -946,6 +946,42 @@ impl Z80 {
             0x1B => self.regs.set_de(self.regs.get_de().wrapping_sub(1)),
             0x2B => self.regs.set_hl(self.regs.get_hl().wrapping_sub(1)),
             0x3B => self.regs.sp = self.regs.sp.wrapping_sub(1),
+
+            // Rotate group
+            // RLCA
+            0x07 => {
+                let a = self.regs.a;
+                self.regs.flags.h = false;
+                self.regs.flags.n = false;
+                self.regs.flags.c = (a & 0x80) == 0x80;
+                self.regs.a = a.rotate_left(1);
+            }
+            // RLA
+            0x17 => {
+                let a = self.regs.a;
+                let c = self.regs.flags.c as u8;
+                self.regs.flags.h = false;
+                self.regs.flags.n = false;
+                self.regs.flags.c = (a & 0x80) == 0x80;
+                self.regs.a = (a.rotate_left(1) & 0xFE) | c;
+            }
+            // RRCA
+            0x0F => {
+                let a = self.regs.a;
+                self.regs.flags.h = false;
+                self.regs.flags.n = false;
+                self.regs.flags.c = (a & 0x01) == 0x01;
+                self.regs.a = a.rotate_right(1);
+            }
+            // RRA
+            0x1F => {
+                let a = self.regs.a;
+                self.regs.flags.h = false;
+                self.regs.flags.n = false;
+                self.regs.flags.c = (a & 0x01) == 0x01;
+                self.regs.a =
+                    (a.rotate_right(1) & 0x7F) | (if self.regs.flags.c { 0x80 } else { 0x00 });
+            }
             _ => {
                 println!("Unknown instruction.");
             }
