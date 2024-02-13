@@ -1053,7 +1053,7 @@ impl Z80 {
                 self.iff2 = true;
             }
             // Special instructions
-            0xCB => todo!(), // Bit istructions
+            0xCB => cycles += self.cb_instructions(), // Bit istructions
             0xDD => todo!(), // IX instructions
             0xED => todo!(), // Misc. instructions
             0xFD => todo!(), // IY instructions
