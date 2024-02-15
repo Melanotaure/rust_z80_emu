@@ -44,9 +44,79 @@ impl Z80 {
         r
     }
 
+    fn neg(&mut self) {
+        let a = self.reg.a;
+        let r = 0_u8.wrapping_sub(a);
+        self.reg.flags.s = r & 0x80 == 0x80;
+        self.reg.flags.z = r == 0;
+        self.reg.flags.h = a & 0x0F > 0;
+        self.reg.flags.p = a == 0x80;
+        self.reg.flags.n = true;
+        self.reg.flags.c = a != 0;
+        self.reg.a = a;
+    }
+
+    fn ldi(&mut self) {
+        let s = self.reg.get_hl();
+        let d = self.reg.get_de();
+        let data = self.bus.read(s);
+        self.bus.write(d, data);
+        self.reg.set_hl(s.wrapping_add(1));
+        self.reg.set_de(d.wrapping_add(1));
+        let bc = self.reg.get_bc();
+        self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.h = false;
+        self.reg.flags.p = self.reg.get_bc() != 0;
+        self.reg.flags.n = false;
+    }
+
+    fn ldd(&mut self) {
+        let s = self.reg.get_hl();
+        let d = self.reg.get_de();
+        let data = self.bus.read(s);
+        self.bus.write(d, data);
+        self.reg.set_hl(s.wrapping_sub(1));
+        self.reg.set_de(d.wrapping_sub(1));
+        let bc = self.reg.get_bc();
+        self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.h = false;
+        self.reg.flags.p = self.reg.get_bc() != 0;
+        self.reg.flags.n = false;
+    }
+
+    fn cpi(&mut self) {
+        let s = self.reg.get_hl();
+        let data = self.bus.read(s);
+        let a = self.reg.a;
+        let r = a.wrapping_sub(data);
+        self.reg.set_hl(s.wrapping_add(1));
+        let bc = self.reg.get_bc();
+        self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.s = r & 0x80 == 0x80;
+        self.reg.flags.z = r == 0;
+        self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
+        self.reg.flags.p = self.reg.get_bc() != 0;
+        self.reg.flags.n = true;
+    }
+
+    fn cpd(&mut self) {
+        let s = self.reg.get_hl();
+        let data = self.bus.read(s);
+        let a = self.reg.a;
+        let r = a.wrapping_sub(data);
+        self.reg.set_hl(s.wrapping_sub(1));
+        let bc = self.reg.get_bc();
+        self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.s = r & 0x80 == 0x80;
+        self.reg.flags.z = r == 0;
+        self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
+        self.reg.flags.p = self.reg.get_bc() != 0;
+        self.reg.flags.n = true;
+    }
+
     pub fn ed_instructions(&mut self) -> u8 {
         let opcode = self.bus.read(self.reg.pc);
-        let cycles = CYCLES_ED[opcode as usize];
+        let mut cycles = CYCLES_ED[opcode as usize];
 
         match opcode {
             // IN r, (C)
@@ -145,7 +215,56 @@ impl Z80 {
                 let sph = self.bus.read(nn.wrapping_add(1));
                 self.reg.sp = u16::from_le_bytes([spl, sph]);
             }
-
+            0x44 => self.neg(),
+            // Interrupt mode
+            0x46 => self.im = InterruptMode::IM_0,
+            0x56 => self.im = InterruptMode::IM_1,
+            0x5E => self.im = InterruptMode::IM_2,
+            // LD I,A ; LD A,I ; LD R,A ; LD A,R
+            0x47 => self.reg.i = self.reg.a,
+            0x57 => self.reg.a = self.reg.i,
+            0x4F => self.reg.r = self.reg.a,
+            0x5F => self.reg.a = self.reg.r,
+            // LDI
+            0xA0 => self.ldi(),
+            // LDIR
+            0xB0 => {
+                self.ldi();
+                if self.reg.flags.p {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // LDD
+            0xA8 => self.ldd(),
+            // LDDR
+            0xB8 => {
+                self.ldd();
+                if self.reg.flags.p {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // CPI
+            0xA1 => self.cpi(),
+            // CPIR
+            0xB1 => {
+                self.cpi();
+                if self.reg.flags.p {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // CPD
+            0xA9 => self.cpd(),
+            // CPDR
+            0xB9 => {
+                self.cpd();
+                if self.reg.flags.p {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
             _ => {}
         }
         cycles

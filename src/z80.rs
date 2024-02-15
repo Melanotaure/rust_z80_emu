@@ -8,6 +8,12 @@ enum BitOp {
     OR,
 }
 
+pub enum InterruptMode {
+    IM_0,
+    IM_1,
+    IM_2,
+}
+
 // Structure of the Z80 processor
 pub struct Z80 {
     // Registers
@@ -29,6 +35,7 @@ pub struct Z80 {
     pub n_reset: bool,
     pub iff1: bool,
     pub iff2: bool,
+    pub im: InterruptMode,
     // CPU bus control
     pub n_busrq: bool,
     pub n_busack: bool,
@@ -54,6 +61,7 @@ impl Z80 {
             n_reset: true,
             iff1: false,
             iff2: false,
+            im: InterruptMode::IM_0,
             n_busrq: true,
             n_busack: true,
             _clock: 0_u64,
@@ -75,6 +83,7 @@ impl Z80 {
         self.n_reset = true;
         self.iff1 = false;
         self.iff2 = false;
+        self.im = InterruptMode::IM_0;
         self.n_rfsh = true;
         self.n_wait = true;
         self.n_wr = true;
