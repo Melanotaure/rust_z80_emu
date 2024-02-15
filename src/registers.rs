@@ -27,26 +27,26 @@ pub struct Registers {
 impl Registers {
     pub fn new() -> Self {
         Self {
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            e: 0,
-            h: 0,
-            l: 0,
-            ixh: 0,
-            ixl: 0,
-            iyh: 0,
-            iyl: 0,
-            i: 0,
-            r: 0,
-            sp: 0,
-            pc: 0,
+            a: 0xFF,
+            b: 0xFF,
+            c: 0xFF,
+            d: 0xFF,
+            e: 0xFF,
+            h: 0xFF,
+            l: 0xFF,
+            ixh: 0xFF,
+            ixl: 0xFF,
+            iyh: 0xFF,
+            iyl: 0xFF,
+            i: 0xFF,
+            r: 0xFF,
+            sp: 0xFFFF,
+            pc: 0x0000,
             flags: Flags::new(),
-            eaf: 0,
-            ebc: 0,
-            ede: 0,
-            ehl: 0,
+            eaf: 0xFFFF,
+            ebc: 0xFFFF,
+            ede: 0xFFFF,
+            ehl: 0xFFFF,
         }
     }
 
@@ -125,21 +125,21 @@ impl Registers {
     }
 
     pub fn reset(&mut self) {
-        self.a = 0;
-        self.b = 0;
-        self.c = 0;
-        self.d = 0;
-        self.e = 0;
-        self.h = 0;
-        self.l = 0;
-        self.ixh = 0;
-        self.ixl = 0;
-        self.iyh = 0;
-        self.iyl = 0;
-        self.i = 0;
-        self.r = 0;
-        self.sp = 0;
-        self.pc = 0;
+        self.a = 0xFF;
+        self.b = 0xFF;
+        self.c = 0xFF;
+        self.d = 0xFF;
+        self.e = 0xFF;
+        self.h = 0xFF;
+        self.l = 0xFF;
+        self.ixh = 0xFF;
+        self.ixl = 0xFF;
+        self.iyh = 0xFF;
+        self.iyl = 0xFF;
+        self.i = 0xFF;
+        self.r = 0xFF;
+        self.sp = 0xFFFF;
+        self.pc = 0x0000;
         self.flags.reset();
     }
 }

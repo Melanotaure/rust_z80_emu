@@ -81,7 +81,7 @@ impl Z80 {
         self._clock = 0;
     }
 
-    fn get_nn(&mut self) -> u16 {
+    pub fn get_nn(&mut self) -> u16 {
         self.reg.inc_pc();
         let nl = self.bus.read(self.reg.pc);
         self.reg.inc_pc();
@@ -178,7 +178,7 @@ impl Z80 {
         let a = self.reg.a;
         let r = a.wrapping_sub(data).wrapping_sub(c);
         self.reg.flags.z = r == 0x00;
-        self.reg.flags.s = (r as i8) < 0;
+        self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.h = (a & 0x0F) < (data & 0x0F).wrapping_add(c);
         self.reg.flags.p = (a as i8).overflowing_sub((data.wrapping_add(c)) as i8).1;
         self.reg.flags.n = true;
@@ -1055,7 +1055,7 @@ impl Z80 {
             // Special instructions
             0xCB => cycles += self.cb_instructions(), // Bit istructions
             0xDD => todo!(), // IX instructions
-            0xED => todo!(), // Misc. instructions
+            0xED => cycles += self.ed_instructions(), // Misc. instructions
             0xFD => todo!(), // IY instructions
         }
         self.reg.inc_pc();

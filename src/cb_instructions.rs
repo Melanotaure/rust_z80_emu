@@ -502,7 +502,6 @@ impl Z80 {
             }
             0xFF => self.reg.a = self.set_b_r(7, self.reg.a)
         };
-
         cycles
     }
 }
