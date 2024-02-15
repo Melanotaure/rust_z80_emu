@@ -98,6 +98,16 @@ impl Z80 {
         self.reg.flags.n = false;
     }
 
+    fn res_b_r(&mut self, bit: u8, reg: u8) -> u8 {
+        let mask = 0xFE_u8 << bit;
+        reg & mask
+    }
+
+    fn set_b_r(&mut self, bit: u8, reg: u8) -> u8 {
+        let mask = 0x01_u8 << bit;
+        reg | mask
+    }
+
     pub fn cb_instructions(&mut self) -> u8 {
         self.reg.inc_pc();
         let opcode = self.bus.read(self.reg.pc);
@@ -297,7 +307,200 @@ impl Z80 {
                 self.bit_b_r(7, data);
             }
             0x7F => self.bit_b_r(7, self.reg.a),
-            _ => {}
+            // RES b, r
+            0x80 => self.reg.b = self.res_b_r(0, self.reg.b),
+            0x81 => self.reg.c = self.res_b_r(0, self.reg.c),
+            0x82 => self.reg.d = self.res_b_r(0, self.reg.d),
+            0x83 => self.reg.e = self.res_b_r(0, self.reg.e),
+            0x84 => self.reg.h = self.res_b_r(0, self.reg.h),
+            0x85 => self.reg.l = self.res_b_r(0, self.reg.l),
+            0x86 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(0, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0x87 => self.reg.a = self.res_b_r(0, self.reg.a),
+            0x88 => self.reg.b = self.res_b_r(1, self.reg.b),
+            0x89 => self.reg.c = self.res_b_r(1, self.reg.c),
+            0x8A => self.reg.d = self.res_b_r(1, self.reg.d),
+            0x8B => self.reg.e = self.res_b_r(1, self.reg.e),
+            0x8C => self.reg.h = self.res_b_r(1, self.reg.h),
+            0x8D => self.reg.l = self.res_b_r(1, self.reg.l),
+            0x8E => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(1, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0x8F => self.reg.a = self.res_b_r(1, self.reg.a),
+            0x90 => self.reg.b = self.res_b_r(2, self.reg.b),
+            0x91 => self.reg.c = self.res_b_r(2, self.reg.c),
+            0x92 => self.reg.d = self.res_b_r(2, self.reg.d),
+            0x93 => self.reg.e = self.res_b_r(2, self.reg.e),
+            0x94 => self.reg.h = self.res_b_r(2, self.reg.h),
+            0x95 => self.reg.l = self.res_b_r(2, self.reg.l),
+            0x96 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(2, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0x97 => self.reg.a = self.res_b_r(2, self.reg.a),
+            0x98 => self.reg.b = self.res_b_r(3, self.reg.b),
+            0x99 => self.reg.c = self.res_b_r(3, self.reg.c),
+            0x9A => self.reg.d = self.res_b_r(3, self.reg.d),
+            0x9B => self.reg.e = self.res_b_r(3, self.reg.e),
+            0x9C => self.reg.h = self.res_b_r(3, self.reg.h),
+            0x9D => self.reg.l = self.res_b_r(3, self.reg.l),
+            0x9E => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(3, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0x9F => self.reg.a = self.res_b_r(3, self.reg.a),
+            0xA0 => self.reg.b = self.res_b_r(4, self.reg.b),
+            0xA1 => self.reg.c = self.res_b_r(4, self.reg.c),
+            0xA2 => self.reg.d = self.res_b_r(4, self.reg.d),
+            0xA3 => self.reg.e = self.res_b_r(4, self.reg.e),
+            0xA4 => self.reg.h = self.res_b_r(4, self.reg.h),
+            0xA5 => self.reg.l = self.res_b_r(4, self.reg.l),
+            0xA6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(4, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xA7 => self.reg.a = self.res_b_r(4, self.reg.a),
+            0xA8 => self.reg.b = self.res_b_r(5, self.reg.b),
+            0xA9 => self.reg.c = self.res_b_r(5, self.reg.c),
+            0xAA => self.reg.d = self.res_b_r(5, self.reg.d),
+            0xAB => self.reg.e = self.res_b_r(5, self.reg.e),
+            0xAC => self.reg.h = self.res_b_r(5, self.reg.h),
+            0xAD => self.reg.l = self.res_b_r(5, self.reg.l),
+            0xAE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(5, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xAF => self.reg.a = self.res_b_r(5, self.reg.a),
+            0xB0 => self.reg.b = self.res_b_r(6, self.reg.b),
+            0xB1 => self.reg.c = self.res_b_r(6, self.reg.c),
+            0xB2 => self.reg.d = self.res_b_r(6, self.reg.d),
+            0xB3 => self.reg.e = self.res_b_r(6, self.reg.e),
+            0xB4 => self.reg.h = self.res_b_r(6, self.reg.h),
+            0xB5 => self.reg.l = self.res_b_r(6, self.reg.l),
+            0xB6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(6, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xB7 => self.reg.a = self.res_b_r(6, self.reg.a),
+            0xB8 => self.reg.b = self.res_b_r(7, self.reg.b),
+            0xB9 => self.reg.c = self.res_b_r(7, self.reg.c),
+            0xBA => self.reg.d = self.res_b_r(7, self.reg.d),
+            0xBB => self.reg.e = self.res_b_r(7, self.reg.e),
+            0xBC => self.reg.h = self.res_b_r(7, self.reg.h),
+            0xBD => self.reg.l = self.res_b_r(7, self.reg.l),
+            0xBE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.res_b_r(7, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xBF => self.reg.a = self.res_b_r(7, self.reg.a),
+            // SET b, r
+            0xC0 => self.reg.b = self.set_b_r(0, self.reg.b),
+            0xC1 => self.reg.c = self.set_b_r(0, self.reg.c),
+            0xC2 => self.reg.d = self.set_b_r(0, self.reg.d),
+            0xC3 => self.reg.e = self.set_b_r(0, self.reg.e),
+            0xC4 => self.reg.h = self.set_b_r(0, self.reg.h),
+            0xC5 => self.reg.l = self.set_b_r(0, self.reg.l),
+            0xC6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(0, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xC7 => self.reg.a = self.set_b_r(0, self.reg.a),
+            0xC8 => self.reg.b = self.set_b_r(1, self.reg.b),
+            0xC9 => self.reg.c = self.set_b_r(1, self.reg.c),
+            0xCA => self.reg.d = self.set_b_r(1, self.reg.d),
+            0xCB => self.reg.e = self.set_b_r(1, self.reg.e),
+            0xCC => self.reg.h = self.set_b_r(1, self.reg.h),
+            0xCD => self.reg.l = self.set_b_r(1, self.reg.l),
+            0xCE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(1, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xCF => self.reg.a = self.set_b_r(1, self.reg.a),
+            0xD0 => self.reg.b = self.set_b_r(2, self.reg.b),
+            0xD1 => self.reg.c = self.set_b_r(2, self.reg.c),
+            0xD2 => self.reg.d = self.set_b_r(2, self.reg.d),
+            0xD3 => self.reg.e = self.set_b_r(2, self.reg.e),
+            0xD4 => self.reg.h = self.set_b_r(2, self.reg.h),
+            0xD5 => self.reg.l = self.set_b_r(2, self.reg.l),
+            0xD6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(2, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xD7 => self.reg.a = self.set_b_r(2, self.reg.a),
+            0xD8 => self.reg.b = self.set_b_r(3, self.reg.b),
+            0xD9 => self.reg.c = self.set_b_r(3, self.reg.c),
+            0xDA => self.reg.d = self.set_b_r(3, self.reg.d),
+            0xDB => self.reg.e = self.set_b_r(3, self.reg.e),
+            0xDC => self.reg.h = self.set_b_r(3, self.reg.h),
+            0xDD => self.reg.l = self.set_b_r(3, self.reg.l),
+            0xDE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(3, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xDF => self.reg.a = self.set_b_r(3, self.reg.a),
+            0xE0 => self.reg.b = self.set_b_r(4, self.reg.b),
+            0xE1 => self.reg.c = self.set_b_r(4, self.reg.c),
+            0xE2 => self.reg.d = self.set_b_r(4, self.reg.d),
+            0xE3 => self.reg.e = self.set_b_r(4, self.reg.e),
+            0xE4 => self.reg.h = self.set_b_r(4, self.reg.h),
+            0xE5 => self.reg.l = self.set_b_r(4, self.reg.l),
+            0xE6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(4, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xE7 => self.reg.a = self.set_b_r(4, self.reg.a),
+            0xE8 => self.reg.b = self.set_b_r(5, self.reg.b),
+            0xE9 => self.reg.c = self.set_b_r(5, self.reg.c),
+            0xEA => self.reg.d = self.set_b_r(5, self.reg.d),
+            0xEB => self.reg.e = self.set_b_r(5, self.reg.e),
+            0xEC => self.reg.h = self.set_b_r(5, self.reg.h),
+            0xED => self.reg.l = self.set_b_r(5, self.reg.l),
+            0xEE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(5, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xEF => self.reg.a = self.set_b_r(5, self.reg.a),
+            0xF0 => self.reg.b = self.set_b_r(6, self.reg.b),
+            0xF1 => self.reg.c = self.set_b_r(6, self.reg.c),
+            0xF2 => self.reg.d = self.set_b_r(6, self.reg.d),
+            0xF3 => self.reg.e = self.set_b_r(6, self.reg.e),
+            0xF4 => self.reg.h = self.set_b_r(6, self.reg.h),
+            0xF5 => self.reg.l = self.set_b_r(6, self.reg.l),
+            0xF6 => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(6, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xF7 => self.reg.a = self.set_b_r(6, self.reg.a),
+            0xF8 => self.reg.b = self.set_b_r(7, self.reg.b),
+            0xF9 => self.reg.c = self.set_b_r(7, self.reg.c),
+            0xFA => self.reg.d = self.set_b_r(7, self.reg.d),
+            0xFB => self.reg.e = self.set_b_r(7, self.reg.e),
+            0xFC => self.reg.h = self.set_b_r(7, self.reg.h),
+            0xFD => self.reg.l = self.set_b_r(7, self.reg.l),
+            0xFE => {
+                let mut data = self.bus.read(self.reg.get_hl());
+                data = self.set_b_r(7, data);
+                self.bus.write(self.reg.get_hl(), data);
+            }
+            0xFF => self.reg.a = self.set_b_r(7, self.reg.a)
         };
 
         cycles
