@@ -114,6 +114,50 @@ impl Z80 {
         self.reg.flags.n = true;
     }
 
+    fn ini(&mut self) {
+        let s = self.reg.get_bc();
+        let data = read_io(s);
+        let d = self.reg.get_hl();
+        self.bus.write(d, data);
+        self.reg.set_hl(d.wrapping_add(1));
+        self.reg.b = self.reg.b.wrapping_sub(1);
+        self.reg.flags.z = self.reg.b == 0;
+        self.reg.flags.n = true;
+    }
+
+    fn ind(&mut self) {
+        let s = self.reg.get_bc();
+        let data = read_io(s);
+        let d = self.reg.get_hl();
+        self.bus.write(d, data);
+        self.reg.set_hl(d.wrapping_sub(1));
+        self.reg.b = self.reg.b.wrapping_sub(1);
+        self.reg.flags.z = self.reg.b == 0;
+        self.reg.flags.n = true;
+    }
+
+    fn outi(&mut self) {
+        let s = self.reg.get_hl();
+        let data = self.bus.read(s);
+        let d = self.reg.get_bc();
+        write_io(d, data);
+        self.reg.set_hl(s.wrapping_add(1));
+        self.reg.b = self.reg.b.wrapping_sub(1);
+        self.reg.flags.z = self.reg.b == 0;
+        self.reg.flags.n = true;
+    }
+
+    fn outd(&mut self) {
+        let s = self.reg.get_hl();
+        let data = self.bus.read(s);
+        let d = self.reg.get_bc();
+        write_io(d, data);
+        self.reg.set_hl(s.wrapping_sub(1));
+        self.reg.b = self.reg.b.wrapping_sub(1);
+        self.reg.flags.z = self.reg.b == 0;
+        self.reg.flags.n = true;
+    }
+
     pub fn ed_instructions(&mut self) -> u8 {
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
@@ -215,19 +259,18 @@ impl Z80 {
                 let sph = self.bus.read(nn.wrapping_add(1));
                 self.reg.sp = u16::from_le_bytes([spl, sph]);
             }
-            0x44 => self.neg(),
+            0x44 | 0x4C | 0x54 | 0x5C | 0x64 | 0x6C | 0x74 | 0x7C => self.neg(),
             // Interrupt mode
-            0x46 => self.im = InterruptMode::IM_0,
-            0x56 => self.im = InterruptMode::IM_1,
-            0x5E => self.im = InterruptMode::IM_2,
+            0x46 | 0x4E | 0x66 | 0x6E => self.im = InterruptMode::IM_0,
+            0x56 | 0x76 => self.im = InterruptMode::IM_1,
+            0x5E | 0x7E => self.im = InterruptMode::IM_2,
             // LD I,A ; LD A,I ; LD R,A ; LD A,R
             0x47 => self.reg.i = self.reg.a,
             0x57 => self.reg.a = self.reg.i,
             0x4F => self.reg.r = self.reg.a,
             0x5F => self.reg.a = self.reg.r,
-            // LDI
+            // LDI ; LDIR
             0xA0 => self.ldi(),
-            // LDIR
             0xB0 => {
                 self.ldi();
                 if self.reg.flags.p {
@@ -235,9 +278,8 @@ impl Z80 {
                     cycles += 5;
                 }
             }
-            // LDD
+            // LDD ; LDDR
             0xA8 => self.ldd(),
-            // LDDR
             0xB8 => {
                 self.ldd();
                 if self.reg.flags.p {
@@ -245,9 +287,8 @@ impl Z80 {
                     cycles += 5;
                 }
             }
-            // CPI
+            // CPI ; CPIR
             0xA1 => self.cpi(),
-            // CPIR
             0xB1 => {
                 self.cpi();
                 if self.reg.flags.p {
@@ -255,9 +296,8 @@ impl Z80 {
                     cycles += 5;
                 }
             }
-            // CPD
+            // CPD ; CPDR
             0xA9 => self.cpd(),
-            // CPDR
             0xB9 => {
                 self.cpd();
                 if self.reg.flags.p {
@@ -265,6 +305,53 @@ impl Z80 {
                     cycles += 5;
                 }
             }
+            // INI ; INIR
+            0xA2 => self.ini(),
+            0xB2 => {
+                self.ini();
+                if !self.reg.flags.z {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // IND ; INDR
+            0xAA => self.ind(),
+            0xBA => {
+                self.ind();
+                if !self.reg.flags.z {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // OUTI ; OUTIR
+            0xA3 => self.outi(),
+            0xB3 => {
+                self.outi();
+                if !self.reg.flags.z {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // OUTD ; OUTDR
+            0xAB => self.outd(),
+            0xBB => {
+                self.outd();
+                if !self.reg.flags.z {
+                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    cycles += 5;
+                }
+            }
+            // RETN
+            0x45 | 0x55 | 0x5D | 0x65 | 0x6D | 0x75 | 0x7D => {
+                self.iff1 = self.iff2;
+                self.ret();
+            }
+            // RETI
+            0x4D => self.ret(),
+
+            // NOP
+            0x77 | 0x7F => {}
+
             _ => {}
         }
         cycles

@@ -127,7 +127,7 @@ impl Z80 {
         self.reg.dec_pc();
     }
 
-    fn ret(&mut self) {
+    pub fn ret(&mut self) {
         let pcl = self.bus.read(self.reg.sp);
         self.reg.inc_sp();
         let pch = self.bus.read(self.reg.sp);
