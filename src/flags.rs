@@ -1,14 +1,13 @@
-
 // Special management for flags
 pub struct Flags {
-    pub s: bool, // sign                : bit 7
-    pub z: bool, // zero                : bit 6
-    pub b5: bool, // unused             : bit 5
-    pub h: bool, // half carry          : bit 4
-    pub b3: bool, // unused             : bit 3
-    pub p: bool, // parity / overflow   : bit 2
-    pub n: bool, // subtract            : bit 1
-    pub c: bool, // carry               : bit 0
+    pub s: bool,  // sign                 : bit 7
+    pub z: bool,  // zero                 : bit 6
+    pub b5: bool, // unused               : bit 5
+    pub h: bool,  // half carry           : bit 4
+    pub b3: bool, // unused               : bit 3
+    pub p: bool,  // parity / overflow    : bit 2
+    pub n: bool,  // subtract             : bit 1
+    pub c: bool,  // carry                : bit 0
 }
 
 impl Flags {
@@ -26,7 +25,13 @@ impl Flags {
     }
 
     pub fn to_byte(&self) -> u8 {
-        [self.s, self.z, self.b5, self.h, self.b3, self.p, self.n, self.c].iter().rev().enumerate().fold(0, |acc, (i,b)| acc | (*b as u8) << i)
+        [
+            self.s, self.z, self.b5, self.h, self.b3, self.p, self.n, self.c,
+        ]
+        .iter()
+        .rev()
+        .enumerate()
+        .fold(0, |acc, (i, b)| acc | (*b as u8) << i)
     }
 
     pub fn from_byte(&mut self, val: u8) {

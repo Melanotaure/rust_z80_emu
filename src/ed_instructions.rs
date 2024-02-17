@@ -1,5 +1,5 @@
-use crate::{cycles::CYCLES_ED, z80::*};
 use crate::bus::{read_io, write_io};
+use crate::{cycles::CYCLES_ED, z80::*};
 
 impl Z80 {
     fn in_r_c(&mut self) -> u8 {
@@ -37,7 +37,7 @@ impl Z80 {
         let r = hl.wrapping_add(reg).wrapping_add(c);
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.z = r == 0;
-        self.reg.flags.h = ((hl & 0x0FFF) + (reg & 0x0FFF) + c) > 0x0FFF ;
+        self.reg.flags.h = ((hl & 0x0FFF) + (reg & 0x0FFF) + c) > 0x0FFF;
         self.reg.flags.p = (hl as i16).overflowing_add((reg.wrapping_add(c)) as i16).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (hl as u32) + (reg as u32 + c as u32) > 0x0000FFFF;
@@ -158,6 +158,15 @@ impl Z80 {
         self.reg.flags.n = true;
     }
 
+    fn ld_a_ri(&mut self, reg: u8) {
+        self.reg.a = reg;
+        self.reg.flags.s = reg & 0x80 == 0x80;
+        self.reg.flags.z = reg == 0;
+        self.reg.flags.h = false;
+        self.reg.flags.p = self.iff2;
+        self.reg.flags.n = false;
+    }
+
     pub fn ed_instructions(&mut self) -> u8 {
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
@@ -170,7 +179,7 @@ impl Z80 {
             0x58 => self.reg.e = self.in_r_c(),
             0x60 => self.reg.h = self.in_r_c(),
             0x68 => self.reg.l = self.in_r_c(),
-            0x70 =>          _ = self.in_r_c(),
+            0x70 => _ = self.in_r_c(),
             0x78 => self.reg.a = self.in_r_c(),
             // OUT (C), r
             0x41 => self.out_c_r(self.reg.b),
@@ -266,9 +275,9 @@ impl Z80 {
             0x5E | 0x7E => self.im = InterruptMode::IM_2,
             // LD I,A ; LD A,I ; LD R,A ; LD A,R
             0x47 => self.reg.i = self.reg.a,
-            0x57 => self.reg.a = self.reg.i,
+            0x57 => self.ld_a_ri(self.reg.i),
             0x4F => self.reg.r = self.reg.a,
-            0x5F => self.reg.a = self.reg.r,
+            0x5F => self.ld_a_ri(self.reg.r),
             // LDI ; LDIR
             0xA0 => self.ldi(),
             0xB0 => {
@@ -347,7 +356,10 @@ impl Z80 {
                 self.ret();
             }
             // RETI
-            0x4D => self.ret(),
+            0x4D => {
+                self.iff1 = self.iff2;
+                self.ret();
+            }
 
             // NOP
             0x77 | 0x7F => {}
