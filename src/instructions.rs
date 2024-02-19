@@ -161,12 +161,21 @@ impl Z80 {
         r
     }
 
-    fn add_hl_rr(&mut self, reg: u16) {
-        let hl = self.reg.get_hl();
+    fn add_hl_ix_iy_rr(&mut self, reg: u16) {
+        let hl = match self.p_inst {
+            0xDD => self.reg.get_ix(),
+            0xFD => self.reg.get_iy(),
+            _ => self.reg.get_hl(),
+        };
         self.reg.flags.h = (hl & 0x0FFF) + (reg & 0x0FFF) > 0x0FFF;
         self.reg.flags.n = false;
         self.reg.flags.c = hl as u32 + reg as u32 > 0xFFFF;
-        self.reg.set_hl(hl.wrapping_add(reg));
+
+        match self.p_inst {
+            0xDD => self.reg.set_ix(hl.wrapping_add(reg)),
+            0xFD => self.reg.set_iy(hl.wrapping_add(reg)),
+            _ => self.reg.set_hl(hl.wrapping_add(reg)),
+        }
     }
 
     fn daa(&mut self) {
@@ -243,11 +252,59 @@ impl Z80 {
         };
     }
 
-    fn read_hl_ix_iy(&self) -> u8 {
+    fn get_hl_ix_iy(&self) -> u16 {
         match self.p_inst {
-            0xDD => self.bus.read(self.reg.get_ix()),
-            0xFD => self.bus.read(self.reg.get_iy()),
+            0xDD => self.reg.get_ix(),
+            0xFD => self.reg.get_iy(),
+            _ => self.reg.get_hl(),
+        }
+    }
+
+    fn set_hl_ix_iy(&mut self, data: u16) {
+        match self.p_inst {
+            0xDD => self.reg.set_ix(data),
+            0xFF => self.reg.set_iy(data),
+            _ => self.reg.set_hl(data),
+        };
+    }
+
+    fn read_hl_ix_iy(&mut self) -> u8 {
+        match self.p_inst {
+            0xDD => {
+                self.reg.inc_pc();
+                let d = self.bus.read(self.reg.pc);
+                let ix = self.reg.get_ix();
+                let addr = ix.wrapping_add((d as i8) as u16);
+                self.bus.read(addr)
+            }
+            0xFD => {
+                self.reg.inc_pc();
+                let d = self.bus.read(self.reg.pc);
+                let iy = self.reg.get_iy();
+                let addr = iy.wrapping_add((d as i8) as u16);
+                self.bus.read(addr)
+            }
             _ => self.bus.read(self.reg.get_hl()), // LD C, (HL)
+        }
+    }
+
+    fn write_hl_ix_iy(&mut self, reg: u8) {
+        match self.p_inst {
+            0xDD => {
+                self.reg.inc_pc();
+                let d = self.bus.read(self.reg.pc);
+                let ix = self.reg.get_ix();
+                let addr = ix.wrapping_add((d as i8) as u16);
+                self.bus.write(addr, reg);
+            }
+            0xFD => {
+                self.reg.inc_pc();
+                let d = self.bus.read(self.reg.pc);
+                let iy = self.reg.get_iy();
+                let addr = iy.wrapping_add((d as i8) as u16);
+                self.bus.write(addr, reg);
+            }
+            _ => self.bus.write(self.reg.get_hl(), reg), // LD C, (HL)
         }
     }
 
@@ -268,7 +325,7 @@ impl Z80 {
             0x43 => self.reg.b = self.reg.e,           // LD B, E
             0x44 => self.reg.b = self.get_h_ixh_iyh(), // LD B,L IXL IYL
             0x45 => self.reg.b = self.get_l_ixl_iyl(), // LD B,H IXH IYH
-            0x46 => self.reg.b = self.read_hl_ix_iy(), // LD B, (HL IX IY)
+            0x46 => self.reg.b = self.read_hl_ix_iy(), // LD B, (HL IX+d IY+d)
             0x47 => self.reg.b = self.reg.a,           // LD B, A
             // Destination reg = c
             0x48 => self.reg.c = self.reg.b,           // LD C, B
@@ -277,7 +334,7 @@ impl Z80 {
             0x4B => self.reg.c = self.reg.e,           // LD C, E
             0x4C => self.reg.c = self.get_h_ixh_iyh(), // LD C, H IXH IYH
             0x4D => self.reg.c = self.get_l_ixl_iyl(), // LD C, L IXL, IYL
-            0x4E => self.reg.c = self.read_hl_ix_iy(), // LD C, (HL IX IY)
+            0x4E => self.reg.c = self.read_hl_ix_iy(), // LD C, (HL IX+d IY+d)
             0x4F => self.reg.c = self.reg.a,           // LD C, A
             // Destination reg = d
             0x50 => self.reg.d = self.reg.b,           // LD D, B
@@ -286,7 +343,7 @@ impl Z80 {
             0x53 => self.reg.d = self.reg.e,           // LD D, E
             0x54 => self.reg.d = self.get_h_ixh_iyh(), // LD D, H IXH IYH
             0x55 => self.reg.d = self.get_l_ixl_iyl(), // LD D, L IXL IYL
-            0x56 => self.reg.d = self.read_hl_ix_iy(), // LD D, (HL IX IY)
+            0x56 => self.reg.d = self.read_hl_ix_iy(), // LD D, (HL IX+d IY+d)
             0x57 => self.reg.d = self.reg.a,           // LD D, A
             // Destination reg = e
             0x58 => self.reg.e = self.reg.b,           // LD E, B
@@ -295,7 +352,7 @@ impl Z80 {
             0x5B => {}                                 // LD E, E
             0x5C => self.reg.e = self.get_h_ixh_iyh(), // LD E, H IXH IYH
             0x5D => self.reg.e = self.get_l_ixl_iyl(), // LD E, L IXL IYL
-            0x5E => self.reg.e = self.read_hl_ix_iy(), // LD E, (HL IX IY)
+            0x5E => self.reg.e = self.read_hl_ix_iy(), // LD E, (HL IX+d IY+d)
             0x5F => self.reg.e = self.reg.a,           // LD E, A
             // Destination reg = h
             0x60 => self.set_h_ixh_iyh(self.reg.b), // LD H, B
@@ -304,7 +361,7 @@ impl Z80 {
             0x63 => self.set_h_ixh_iyh(self.reg.e), // LD H, E
             0x64 => {}                              // LD H, H
             0x65 => self.set_h_ixh_iyh(self.get_l_ixl_iyl()), // LD H, L
-            0x66 => self.set_h_ixh_iyh(self.read_hl_ix_iy()), // LD H, (HL)
+            0x66 => self.reg.h = self.read_hl_ix_iy(), // LD H, (HL IX+d IY+d)
             0x67 => self.set_h_ixh_iyh(self.reg.a), // LD H, A
             // Destination reg = l
             0x68 => self.set_l_ixl_iyl(self.reg.b), // LD L, B
@@ -313,26 +370,26 @@ impl Z80 {
             0x6B => self.set_l_ixl_iyl(self.reg.e), // LD L, E
             0x6C => self.set_l_ixl_iyl(self.get_h_ixh_iyh()), // LD L, H
             0x6D => {}                              // LD L, L
-            0x6E => self.set_l_ixl_iyl(self.read_hl_ix_iy()), // LD L, (HL)
+            0x6E => self.reg.l = self.read_hl_ix_iy(), // LD L, (HL IX+d IY+d)
             0x6F => self.set_l_ixl_iyl(self.reg.a), // LD L, A
-            // Destination reg = (hl)
-            0x70 => self.bus.write(self.reg.get_hl(), self.reg.b), // LD (HL), B
-            0x71 => self.bus.write(self.reg.get_hl(), self.reg.c), // LD (HL), C
-            0x72 => self.bus.write(self.reg.get_hl(), self.reg.d), // LD (HL), D
-            0x73 => self.bus.write(self.reg.get_hl(), self.reg.e), // LD (HL), E
-            0x74 => self.bus.write(self.reg.get_hl(), self.reg.h), // LD (HL), H
-            0x75 => self.bus.write(self.reg.get_hl(), self.reg.l), // LD (HL), L
+            // Destination reg = (HL IX+d IY+d)
+            0x70 => self.write_hl_ix_iy(self.reg.b), // LD (HL), B
+            0x71 => self.write_hl_ix_iy(self.reg.c), // LD (HL), C
+            0x72 => self.write_hl_ix_iy(self.reg.d), // LD (HL), D
+            0x73 => self.write_hl_ix_iy(self.reg.e), // LD (HL), E
+            0x74 => self.write_hl_ix_iy(self.reg.h), // LD (HL), H
+            0x75 => self.write_hl_ix_iy(self.reg.l), // LD (HL), L
             // 0x76 => HALT treated elsewhere
-            0x77 => self.bus.write(self.reg.get_hl(), self.reg.a), // LD (HL), A
+            0x77 => self.write_hl_ix_iy(self.reg.a), // LD (HL), A
             // Destination reg = a
-            0x78 => self.reg.a = self.reg.b, // LD A, B
-            0x79 => self.reg.a = self.reg.c, // LD A, C
-            0x7A => self.reg.a = self.reg.d, // LD A, D
-            0x7B => self.reg.a = self.reg.e, // LD A, E
-            0x7C => self.reg.a = self.reg.h, // LD A, H
-            0x7D => self.reg.a = self.reg.l, // LD A, L
-            0x7E => self.reg.a = self.bus.read(self.reg.get_hl()), // LD A, (HL)
-            0x7F => {}                       // LD A, A
+            0x78 => self.reg.a = self.reg.b,           // LD A, B
+            0x79 => self.reg.a = self.reg.c,           // LD A, C
+            0x7A => self.reg.a = self.reg.d,           // LD A, D
+            0x7B => self.reg.a = self.reg.e,           // LD A, E
+            0x7C => self.reg.a = self.get_h_ixh_iyh(), // LD A, H
+            0x7D => self.reg.a = self.get_l_ixl_iyl(), // LD A, L
+            0x7E => self.reg.a = self.read_hl_ix_iy(), // LD A, (HL)
+            0x7F => {}                                 // LD A, A
             // LD r, n
             0x06 => {
                 self.reg.inc_pc();
@@ -347,12 +404,13 @@ impl Z80 {
             0x26 => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
-                self.reg.h = n;
+                self.set_h_ixh_iyh(n);
             }
             0x36 => {
+                // LD (HL IX+d IY+d), n when d, n is the second byte (xxyyddnn)
+                let n = self.bus.read(self.reg.pc.wrapping_add(2));
+                self.write_hl_ix_iy(n);
                 self.reg.inc_pc();
-                let n = self.bus.read(self.reg.pc);
-                self.bus.write(self.reg.get_hl(), n);
             }
             0x0E => {
                 self.reg.inc_pc();
@@ -367,7 +425,7 @@ impl Z80 {
             0x2E => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
-                self.reg.l = n;
+                self.set_l_ixl_iyl(n);
             }
             0x3E => {
                 self.reg.inc_pc();
@@ -407,7 +465,7 @@ impl Z80 {
             // LD HL, nn
             0x21 => {
                 let nn = self.get_nn();
-                self.reg.set_hl(nn);
+                self.set_hl_ix_iy(nn);
             }
             // LD SP, nn
             0x31 => {
@@ -417,17 +475,18 @@ impl Z80 {
             // LD HL, (nn)
             0x2A => {
                 let nn = self.get_nn();
-                self.reg.l = self.bus.read(nn);
-                self.reg.h = self.bus.read(nn.wrapping_add(1));
+                let l = self.bus.read(nn);
+                let h = self.bus.read(nn.wrapping_add(1));
+                self.set_hl_ix_iy(u16::from_le_bytes([l, h]));
             }
             // LD (nn), HL
             0x22 => {
                 let nn = self.get_nn();
-                self.bus.write(nn, self.reg.l);
-                self.bus.write(nn.wrapping_add(1), self.reg.h);
+                self.bus.write(nn, self.get_l_ixl_iyl());
+                self.bus.write(nn.wrapping_add(1), self.get_h_ixh_iyh());
             }
             // LD SP, HL
-            0xF9 => self.reg.sp = self.reg.get_hl(),
+            0xF9 => self.reg.sp = u16::from_le_bytes([self.get_l_ixl_iyl(), self.get_h_ixh_iyh()]),
             // PUSH BC
             0xC5 => {
                 self.reg.dec_sp();
@@ -442,12 +501,12 @@ impl Z80 {
                 self.reg.dec_sp();
                 self.bus.write(self.reg.sp, self.reg.e);
             }
-            // PUSH HL
+            // PUSH HL IX IY
             0xE5 => {
                 self.reg.dec_sp();
-                self.bus.write(self.reg.sp, self.reg.h);
+                self.bus.write(self.reg.sp, self.get_h_ixh_iyh());
                 self.reg.dec_sp();
-                self.bus.write(self.reg.sp, self.reg.l);
+                self.bus.write(self.reg.sp, self.get_l_ixl_iyl());
             }
             // PUSH AF
             0xF5 => {
@@ -468,11 +527,11 @@ impl Z80 {
                 self.reg.inc_sp();
                 self.reg.d = self.bus.read(self.reg.sp);
             }
-            // POP HL
+            // POP HL IX IY
             0xE1 => {
-                self.reg.l = self.bus.read(self.reg.sp);
+                self.set_l_ixl_iyl(self.bus.read(self.reg.sp));
                 self.reg.inc_sp();
-                self.reg.h = self.bus.read(self.reg.sp);
+                self.set_h_ixh_iyh(self.bus.read(self.reg.sp));
             }
             // POP AF
             0xF1 => {
@@ -508,15 +567,15 @@ impl Z80 {
                 self.reg.set_hl(self.reg.ehl);
                 self.reg.ehl = tmp;
             }
-            // EX (SP), HL
+            // EX (SP), HL IX IY
             0xE3 => {
                 let n = self.bus.read(self.reg.sp);
-                self.bus.write(self.reg.sp, self.reg.l);
-                self.reg.l = n;
+                self.bus.write(self.reg.sp, self.get_l_ixl_iyl());
+                self.set_l_ixl_iyl(n);
                 self.reg.inc_sp();
                 let n = self.bus.read(self.reg.sp);
-                self.bus.write(self.reg.sp, self.reg.h);
-                self.reg.h = n;
+                self.bus.write(self.reg.sp, self.get_h_ixh_iyh());
+                self.set_h_ixh_iyh(n);
             }
 
             // Jump group
@@ -605,7 +664,10 @@ impl Z80 {
                 }
             }
             // JP (HL)
-            0xE9 => self.reg.pc = self.reg.get_hl().wrapping_sub(1),
+            0xE9 => {
+                self.reg.pc =
+                    u16::from_le_bytes([self.get_l_ixl_iyl(), self.get_h_ixh_iyh()]).wrapping_sub(1)
+            }
 
             // Call & Return Group
             // CALL nn
@@ -767,16 +829,15 @@ impl Z80 {
             }
 
             // 8-bit arithmetic group
-            // LD A, r
+            // ADD A, r
             0x80 => self.add_a_r(self.reg.b),
             0x81 => self.add_a_r(self.reg.c),
             0x82 => self.add_a_r(self.reg.d),
             0x83 => self.add_a_r(self.reg.e),
-            0x84 => self.add_a_r(self.reg.h),
-            0x85 => self.add_a_r(self.reg.l),
+            0x84 => self.add_a_r(self.get_h_ixh_iyh()),
+            0x85 => self.add_a_r(self.get_l_ixl_iyl()),
             0x86 => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.add_a_r(data);
             }
             0x87 => self.add_a_r(self.reg.a),
@@ -785,11 +846,10 @@ impl Z80 {
             0x89 => self.adc_a_r(self.reg.c),
             0x8A => self.adc_a_r(self.reg.d),
             0x8B => self.adc_a_r(self.reg.e),
-            0x8C => self.adc_a_r(self.reg.h),
-            0x8D => self.adc_a_r(self.reg.l),
+            0x8C => self.adc_a_r(self.get_h_ixh_iyh()),
+            0x8D => self.adc_a_r(self.get_l_ixl_iyl()),
             0x8E => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.adc_a_r(data);
             }
             0x8F => self.adc_a_r(self.reg.a),
@@ -798,11 +858,10 @@ impl Z80 {
             0x91 => self.sub_a_r(self.reg.c),
             0x92 => self.sub_a_r(self.reg.d),
             0x93 => self.sub_a_r(self.reg.e),
-            0x94 => self.sub_a_r(self.reg.h),
-            0x95 => self.sub_a_r(self.reg.l),
+            0x94 => self.sub_a_r(self.get_h_ixh_iyh()),
+            0x95 => self.sub_a_r(self.get_l_ixl_iyl()),
             0x96 => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.sub_a_r(data);
             }
             0x97 => self.sub_a_r(self.reg.a),
@@ -811,11 +870,10 @@ impl Z80 {
             0x99 => self.sbc_a_r(self.reg.c),
             0x9A => self.sbc_a_r(self.reg.d),
             0x9B => self.sbc_a_r(self.reg.e),
-            0x9C => self.sbc_a_r(self.reg.h),
-            0x9D => self.sbc_a_r(self.reg.l),
+            0x9C => self.sbc_a_r(self.get_h_ixh_iyh()),
+            0x9D => self.sbc_a_r(self.get_l_ixl_iyl()),
             0x9E => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.sbc_a_r(data);
             }
             0x9F => self.sbc_a_r(self.reg.a),
@@ -824,11 +882,10 @@ impl Z80 {
             0xA1 => self.bit_op_a_r(BitOp::AND, self.reg.c),
             0xA2 => self.bit_op_a_r(BitOp::AND, self.reg.d),
             0xA3 => self.bit_op_a_r(BitOp::AND, self.reg.e),
-            0xA4 => self.bit_op_a_r(BitOp::AND, self.reg.h),
-            0xA5 => self.bit_op_a_r(BitOp::AND, self.reg.l),
+            0xA4 => self.bit_op_a_r(BitOp::AND, self.get_h_ixh_iyh()),
+            0xA5 => self.bit_op_a_r(BitOp::AND, self.get_l_ixl_iyl()),
             0xA6 => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::AND, data);
             }
             0xA7 => self.bit_op_a_r(BitOp::AND, self.reg.a),
@@ -837,11 +894,10 @@ impl Z80 {
             0xA9 => self.bit_op_a_r(BitOp::XOR, self.reg.c),
             0xAA => self.bit_op_a_r(BitOp::XOR, self.reg.d),
             0xAB => self.bit_op_a_r(BitOp::XOR, self.reg.e),
-            0xAC => self.bit_op_a_r(BitOp::XOR, self.reg.h),
-            0xAD => self.bit_op_a_r(BitOp::XOR, self.reg.l),
+            0xAC => self.bit_op_a_r(BitOp::XOR, self.get_h_ixh_iyh()),
+            0xAD => self.bit_op_a_r(BitOp::XOR, self.get_l_ixl_iyl()),
             0xAE => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::XOR, data);
             }
             0xAF => self.bit_op_a_r(BitOp::XOR, self.reg.a),
@@ -850,11 +906,10 @@ impl Z80 {
             0xB1 => self.bit_op_a_r(BitOp::OR, self.reg.c),
             0xB2 => self.bit_op_a_r(BitOp::OR, self.reg.d),
             0xB3 => self.bit_op_a_r(BitOp::OR, self.reg.e),
-            0xB4 => self.bit_op_a_r(BitOp::OR, self.reg.h),
-            0xB5 => self.bit_op_a_r(BitOp::OR, self.reg.l),
+            0xB4 => self.bit_op_a_r(BitOp::OR, self.get_h_ixh_iyh()),
+            0xB5 => self.bit_op_a_r(BitOp::OR, self.get_l_ixl_iyl()),
             0xB6 => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::OR, data);
             }
             0xB7 => self.cp_r(self.reg.a),
@@ -863,11 +918,10 @@ impl Z80 {
             0xB9 => self.cp_r(self.reg.c),
             0xBA => self.cp_r(self.reg.d),
             0xBB => self.cp_r(self.reg.e),
-            0xBC => self.cp_r(self.reg.h),
-            0xBD => self.cp_r(self.reg.l),
+            0xBC => self.cp_r(self.get_h_ixh_iyh()),
+            0xBD => self.cp_r(self.get_l_ixl_iyl()),
             0xBE => {
-                let addr = self.reg.get_hl();
-                let data = self.bus.read(addr);
+                let data = self.read_hl_ix_iy();
                 self.cp_r(data);
             }
             0xBF => self.cp_r(self.reg.a),
@@ -907,7 +961,7 @@ impl Z80 {
                 let n = self.bus.read(self.reg.pc);
                 self.sbc_a_r(n);
             }
-            // XOR a, n
+            // XOR A, n
             0xEE => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
@@ -922,45 +976,57 @@ impl Z80 {
             // INC r
             0x04 => self.reg.b = self.inc_r(self.reg.b),
             0x14 => self.reg.d = self.inc_r(self.reg.d),
-            0x24 => self.reg.h = self.inc_r(self.reg.h),
+            0x24 => {
+                let reg = self.inc_r(self.get_h_ixh_iyh());
+                self.set_h_ixh_iyh(reg);
+            }
             0x34 => {
-                let mut n = self.bus.read(self.reg.get_hl());
+                let mut n = self.read_hl_ix_iy();
                 n = self.inc_r(n);
-                self.bus.write(self.reg.get_hl(), n);
+                self.write_hl_ix_iy(n);
             }
             0x0C => self.reg.c = self.inc_r(self.reg.c),
             0x1C => self.reg.e = self.inc_r(self.reg.e),
-            0x2C => self.reg.l = self.inc_r(self.reg.l),
+            0x2C => {
+                let reg = self.inc_r(self.get_l_ixl_iyl());
+                self.set_l_ixl_iyl(reg);
+            }
             0x3C => self.reg.a = self.inc_r(self.reg.a),
             // DEC r
             0x05 => self.reg.b = self.dec_r(self.reg.b),
             0x15 => self.reg.d = self.dec_r(self.reg.d),
-            0x25 => self.reg.h = self.dec_r(self.reg.h),
+            0x25 => {
+                let reg = self.dec_r(self.get_h_ixh_iyh());
+                self.set_h_ixh_iyh(reg);
+            }
             0x35 => {
-                let mut n = self.bus.read(self.reg.get_hl());
+                let mut n = self.read_hl_ix_iy();
                 n = self.dec_r(n);
-                self.bus.write(self.reg.get_hl(), n);
+                self.write_hl_ix_iy(n);
             }
             0x0D => self.reg.c = self.dec_r(self.reg.c),
             0x1D => self.reg.e = self.dec_r(self.reg.e),
-            0x2D => self.reg.l = self.dec_r(self.reg.l),
+            0x2D => {
+                let reg = self.dec_r(self.get_l_ixl_iyl());
+                self.set_l_ixl_iyl(reg);
+            }
             0x3D => self.reg.a = self.dec_r(self.reg.a),
 
             // 16-bit arithmetic group
             // ADD HL, rr
-            0x09 => self.add_hl_rr(self.reg.get_bc()),
-            0x19 => self.add_hl_rr(self.reg.get_de()),
-            0x29 => self.add_hl_rr(self.reg.get_hl()),
-            0x39 => self.add_hl_rr(self.reg.sp),
+            0x09 => self.add_hl_ix_iy_rr(self.reg.get_bc()),
+            0x19 => self.add_hl_ix_iy_rr(self.reg.get_de()),
+            0x29 => self.add_hl_ix_iy_rr(self.get_hl_ix_iy()),
+            0x39 => self.add_hl_ix_iy_rr(self.reg.sp),
             // INC rr
             0x03 => self.reg.set_bc(self.reg.get_bc().wrapping_add(1)),
             0x13 => self.reg.set_de(self.reg.get_de().wrapping_add(1)),
-            0x23 => self.reg.set_hl(self.reg.get_hl().wrapping_add(1)),
+            0x23 => self.set_hl_ix_iy(self.get_hl_ix_iy().wrapping_add(1)),
             0x33 => self.reg.sp = self.reg.sp.wrapping_add(1),
             // DEC rr
             0x0B => self.reg.set_bc(self.reg.get_bc().wrapping_sub(1)),
             0x1B => self.reg.set_de(self.reg.get_de().wrapping_sub(1)),
-            0x2B => self.reg.set_hl(self.reg.get_hl().wrapping_sub(1)),
+            0x2B => self.set_hl_ix_iy(self.get_hl_ix_iy().wrapping_sub(1)),
             0x3B => self.reg.sp = self.reg.sp.wrapping_sub(1),
 
             // Rotate group

@@ -25,7 +25,9 @@ impl Bus {
 }
 
 pub fn read_io(addr: u16) -> u8 {
-    0x00
+    addr as u8
 }
 
-pub fn write_io(addr: u16, data: u8) {}
+pub fn write_io(addr: u16, data: u8) {
+    let _d = addr + data as u16;
+}
