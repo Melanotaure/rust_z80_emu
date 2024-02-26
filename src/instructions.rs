@@ -268,7 +268,7 @@ impl Z80 {
         };
     }
 
-    fn read_hl_ix_iy(&mut self) -> u8 {
+    pub fn read_hl_ix_iy(&mut self) -> u8 {
         match self.p_inst {
             0xDD => {
                 self.reg.inc_pc();
@@ -1088,7 +1088,7 @@ impl Z80 {
                 self.iff2 = true;
             }
             // Special instructions
-            0xCB => cycles += self.cb_instructions(), // Bit istructions
+            0xCB => cycles += self.cb_instructions(), // Bit instructions
             0xED => cycles += self.ed_instructions(), // Misc. instructions
             _ => {} // For 0xDD and 0xFD instructions do something depending on the next opcode
         }
