@@ -65,6 +65,8 @@ impl Z80 {
         self.reg.set_de(d.wrapping_add(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.b5 = data & 0b00000010 == 0b00000010;
+        self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
@@ -79,6 +81,8 @@ impl Z80 {
         self.reg.set_de(d.wrapping_sub(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
+        self.reg.flags.b5 = data & 0b00000010 == 0b00000010;
+        self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
@@ -97,6 +101,9 @@ impl Z80 {
         self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
+        let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
+        self.reg.flags.b5 = n & 0b00000010 == 0b00000010;
+        self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
     }
 
     fn cpd(&mut self) {
@@ -112,6 +119,9 @@ impl Z80 {
         self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
+        let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
+        self.reg.flags.b5 = n & 0b00000010 == 0b00000010;
+        self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
     }
 
     fn ini(&mut self) {
@@ -120,9 +130,12 @@ impl Z80 {
         let d = self.reg.get_hl();
         self.bus.write(d, data);
         self.reg.set_hl(d.wrapping_add(1));
-        self.reg.b = self.reg.b.wrapping_sub(1);
-        self.reg.flags.z = self.reg.b == 0;
-        self.reg.flags.n = true;
+        self.reg.b = self.dec_r(self.reg.b);
+        self.reg.flags.n = data & 0x80 == 0x80;
+        let k = data as u16 + self.reg.c.wrapping_add(1) as u16;
+        self.reg.flags.c = k > 0x00FF;
+        self.reg.flags.h = self.reg.flags.c;
+        self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
     }
 
     fn ind(&mut self) {
@@ -131,31 +144,40 @@ impl Z80 {
         let d = self.reg.get_hl();
         self.bus.write(d, data);
         self.reg.set_hl(d.wrapping_sub(1));
-        self.reg.b = self.reg.b.wrapping_sub(1);
-        self.reg.flags.z = self.reg.b == 0;
-        self.reg.flags.n = true;
+        self.reg.b = self.dec_r(self.reg.b);
+        self.reg.flags.n = data & 0x80 == 0x80;
+        let k = data as u16 + self.reg.c.wrapping_sub(1) as u16;
+        self.reg.flags.c = k > 0x00FF;
+        self.reg.flags.h = self.reg.flags.c;
+        self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
     }
 
     fn outi(&mut self) {
         let s = self.reg.get_hl();
         let data = self.bus.read(s);
+        self.reg.set_hl(s.wrapping_add(1));
+        self.reg.b = self.dec_r(self.reg.b);
+        self.reg.flags.n = data & 0x80 == 0x80;
         let d = self.reg.get_bc();
         write_io(d, data);
-        self.reg.set_hl(s.wrapping_add(1));
-        self.reg.b = self.reg.b.wrapping_sub(1);
-        self.reg.flags.z = self.reg.b == 0;
-        self.reg.flags.n = true;
+        let k = data as u16 + self.reg.l as u16;
+        self.reg.flags.c = k > 0x00FF;
+        self.reg.flags.h = self.reg.flags.c;
+        self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
     }
 
     fn outd(&mut self) {
         let s = self.reg.get_hl();
         let data = self.bus.read(s);
+        self.reg.set_hl(s.wrapping_sub(1));
+        self.reg.b = self.dec_r(self.reg.b);
+        self.reg.flags.n = data & 0x80 == 0x80;
         let d = self.reg.get_bc();
         write_io(d, data);
-        self.reg.set_hl(s.wrapping_sub(1));
-        self.reg.b = self.reg.b.wrapping_sub(1);
-        self.reg.flags.z = self.reg.b == 0;
-        self.reg.flags.n = true;
+        let k = data as u16 + self.reg.l as u16;
+        self.reg.flags.c = k > 0x00FF;
+        self.reg.flags.h = self.reg.flags.c;
+        self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
     }
 
     fn ld_a_ri(&mut self, reg: u8) {

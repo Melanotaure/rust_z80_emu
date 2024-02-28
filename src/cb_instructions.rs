@@ -236,18 +236,35 @@ impl Z80 {
     }
 
     fn bit_b_r(&mut self, bit: u8, reg: u8, d: u8) {
-        let data = match self.p_inst {
-            0xDD => self
-                .bus
-                .read(self.reg.get_ix().wrapping_add((d as i8) as u16)),
-            0xFD => self
-                .bus
-                .read(self.reg.get_iy().wrapping_add((d as i8) as u16)),
-            _ => reg,
-        };
         let mask = 0x01_u8 << bit;
+        let data = match self.p_inst {
+            0xDD => {
+                let addr = self.reg.get_ix().wrapping_add((d as i8) as u16);
+                self.reg.flags.b5 = addr & 0b00100000_00000000 == 0b00100000_00000000;
+                self.reg.flags.b3 = addr & 0b00001000_00000000 == 0b00001000_00000000;
+                self.bus.read(addr)
+            }
+            0xFD => {
+                let addr = self.reg.get_iy().wrapping_add((d as i8) as u16);
+                self.reg.flags.b5 = addr & 0b00100000_00000000 == 0b00100000_00000000;
+                self.reg.flags.b3 = addr & 0b00001000_00000000 == 0b00001000_00000000;
+                self.bus.read(addr)
+            }
+            _ => {
+                match bit {
+                    5 => self.reg.flags.b5 = reg & mask == mask,
+                    3 => self.reg.flags.b3 = reg & mask == mask,
+                    _ => {}
+                }
+                reg
+            }
+        };
+        if bit == 7 {
+            self.reg.flags.s = data & mask == mask;
+        }
         self.reg.flags.z = data & mask == 0x00;
         self.reg.flags.h = true;
+        self.reg.flags.p = self.reg.flags.z;
         self.reg.flags.n = false;
     }
 
