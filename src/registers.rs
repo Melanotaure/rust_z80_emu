@@ -39,7 +39,7 @@ impl Registers {
             iyh: 0xFF,
             iyl: 0xFF,
             i: 0xFF,
-            r: 0xFF,
+            r: 0x00,
             sp: 0xFFFF,
             pc: 0x0000,
             flags: Flags::new(),
@@ -124,6 +124,10 @@ impl Registers {
         self.sp = self.sp.wrapping_sub(1);
     }
 
+    pub fn inc_r(&mut self) {
+        self.r = self.r & 0x80 + self.r.wrapping_add(1) & 0x7F;
+    }
+
     pub fn reset(&mut self) {
         self.a = 0xFF;
         self.b = 0xFF;
@@ -137,7 +141,7 @@ impl Registers {
         self.iyh = 0xFF;
         self.iyl = 0xFF;
         self.i = 0xFF;
-        self.r = 0xFF;
+        self.r = 0x00;
         self.sp = 0xFFFF;
         self.pc = 0x0000;
         self.flags.reset();

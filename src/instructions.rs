@@ -331,6 +331,8 @@ impl Z80 {
     pub fn execute(&mut self) -> u8 {
         let instr = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES[instr as usize];
+        // Increment R register at each instruction
+        self.reg.inc_r();
 
         match instr {
             // NOP
