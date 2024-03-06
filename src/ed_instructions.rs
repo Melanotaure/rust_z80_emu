@@ -189,6 +189,36 @@ impl Z80 {
         self.reg.flags.n = false;
     }
 
+    fn rld(&mut self) {
+        let n = self.bus.read(self.reg.get_hl());
+        let a = self.reg.a;
+        let tmp = a & 0x0F;
+        let a = (a & 0xF0) | (n >> 4);
+        let n = (n << 4) | tmp;
+        self.reg.flags.s = a & 0x80 == 0x80;
+        self.reg.flags.z = a == 0;
+        self.reg.flags.h = false;
+        self.reg.flags.p = a.count_ones() & 0x01 == 0;
+        self.reg.flags.n = false;
+        self.reg.a = a;
+        self.bus.write(self.reg.get_hl(), n);
+    }
+
+    fn rrd(&mut self) {
+        let n = self.bus.read(self.reg.get_hl());
+        let a = self.reg.a;
+        let tmp = a << 4;
+        let a = (a & 0xF0) | (n & 0x0F);
+        let n = (n >> 4) | tmp;
+        self.reg.flags.s = a & 0x80 == 0x80;
+        self.reg.flags.z = a == 0;
+        self.reg.flags.h = false;
+        self.reg.flags.p = a.count_ones() & 0x01 == 0;
+        self.reg.flags.n = false;
+        self.reg.a = a;
+        self.bus.write(self.reg.get_hl(), n);
+    }
+
     pub fn ed_instructions(&mut self) -> u8 {
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
@@ -382,6 +412,10 @@ impl Z80 {
                 self.iff1 = self.iff2;
                 self.ret();
             }
+
+            // RRD and RLD
+            0x67 => self.rrd(),
+            0x6F => self.rld(),
 
             // NOP
             0x77 | 0x7F => {}
