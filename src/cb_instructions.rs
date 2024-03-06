@@ -1,4 +1,4 @@
-use crate::{cycles::CYCLES_CB, z80::*};
+use crate::{cycles::{CYCLES_CB, CYCLES_DD_FD_CB}, z80::*};
 
 impl Z80 {
     fn rlc_r(&mut self, reg: u8, d: u8) -> u8 {
@@ -325,7 +325,7 @@ impl Z80 {
         };
         self.reg.inc_pc();
         let opcode = self.bus.read(self.reg.pc);
-        let cycles = CYCLES_CB[opcode as usize];
+        let mut cycles = CYCLES_CB[opcode as usize];
 
         match opcode {
             // RLC r
@@ -812,6 +812,9 @@ impl Z80 {
             }
             0xFF => self.reg.a = self.set_b_r(7, self.reg.a, d),
         };
+        if self.p_inst == 0xDD || self.p_inst == 0xFD {
+            cycles += CYCLES_DD_FD_CB[opcode as usize];
+        }
         cycles
     }
 }
