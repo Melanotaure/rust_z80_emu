@@ -220,6 +220,7 @@ impl Z80 {
     }
 
     pub fn ed_instructions(&mut self) -> u8 {
+        self.reg.inc_pc();
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
 
@@ -335,7 +336,7 @@ impl Z80 {
             0xB0 => {
                 self.ldi();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -344,7 +345,7 @@ impl Z80 {
             0xB8 => {
                 self.ldd();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -353,7 +354,7 @@ impl Z80 {
             0xB1 => {
                 self.cpi();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -362,7 +363,7 @@ impl Z80 {
             0xB9 => {
                 self.cpd();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -371,7 +372,7 @@ impl Z80 {
             0xB2 => {
                 self.ini();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -380,7 +381,7 @@ impl Z80 {
             0xBA => {
                 self.ind();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -389,7 +390,7 @@ impl Z80 {
             0xB3 => {
                 self.outi();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
@@ -398,7 +399,7 @@ impl Z80 {
             0xBB => {
                 self.outd();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(3);
+                    self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }

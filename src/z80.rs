@@ -86,4 +86,10 @@ impl Z80 {
         self.p_inst;
         self._clock = 0;
     }
+
+    pub fn display_regs(&self) {
+        println!("PC: {:04X} SP: {:04X}", self.reg.pc, self.reg.sp);
+        println!("AF: {:04X} BC: {:04X}", self.reg.get_af(), self.reg.get_bc());
+        println!("DE: {:04X} HL: {:04X}", self.reg.get_de(), self.reg.get_hl());
+    }
 }
