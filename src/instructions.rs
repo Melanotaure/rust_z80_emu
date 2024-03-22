@@ -607,48 +607,64 @@ impl Z80 {
             0xC2 => {
                 if !self.reg.flags.z {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
-            // JP z
+            // JP z, nn
             0xCA => {
                 if self.reg.flags.z {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP nc, nn
             0xD2 => {
                 if !self.reg.flags.c {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP c, nn
             0xDA => {
                 if self.reg.flags.c {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP po, nn
             0xE2 => {
                 if !self.reg.flags.p {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP pe, nn
             0xEA => {
                 if self.reg.flags.p {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP p, nn
             0xF2 => {
                 if !self.reg.flags.s {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP m, nn
             0xFA => {
                 if self.reg.flags.s {
                     self.jp_nn();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JR e
@@ -657,12 +673,16 @@ impl Z80 {
             0x28 => {
                 if self.reg.flags.z {
                     self.jr_e();
+                } else {
+                    self.reg.inc_pc();
                 }
             }
             // JR c, e
             0x38 => {
                 if self.reg.flags.c {
                     self.jr_e();
+                } else {
+                    self.reg.inc_pc();
                 }
             }
             // DJNZ e
@@ -671,18 +691,24 @@ impl Z80 {
                 if self.reg.b != 0 {
                     self.jr_e();
                     cycles += 5;
+                } else {
+                    self.reg.inc_pc();
                 }
             }
             // JR nz, e
             0x20 => {
                 if !self.reg.flags.z {
                     self.jr_e();
+                } else {
+                    self.reg.inc_pc();
                 }
             }
             // JR nc, nn
             0x30 => {
                 if !self.reg.flags.c {
                     self.jr_e();
+                } else {
+                    self.reg.inc_pc();
                 }
             }
             // JP (HL)
@@ -1082,9 +1108,10 @@ impl Z80 {
                 let a = self.reg.a;
                 self.reg.flags.h = false;
                 self.reg.flags.n = false;
-                self.reg.flags.c = (a & 0x01) == 0x01;
+                let carry = (a & 0x01) == 0x01;
                 self.reg.a =
                     (a.rotate_right(1) & 0x7F) | (if self.reg.flags.c { 0x80 } else { 0x00 });
+                self.reg.flags.c = carry;
             }
             // DAA
             0x27 => self.daa(),
