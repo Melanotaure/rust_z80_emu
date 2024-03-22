@@ -50,7 +50,7 @@ You can also run some examples:
                         ;DECREMENTED TO ZERO
     @DATA:
     .byte 0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF, '$'
-    @END:
+    @BUFFER:
 ```
 
 ```
