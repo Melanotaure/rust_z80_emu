@@ -9,6 +9,9 @@ fn main() {
     }
 
     let mut cycles: usize = 0;
+    println!("Memory contents at start:");
+    z80.memory_dump(0, 50);
+    println!("");
     z80.display_regs();
     println!("");
     loop {
@@ -21,7 +24,6 @@ fn main() {
     }
     println!("cycles: {}", cycles);
 
-    for addr in 11..43 {
-        println!("addr: {:04X} data: {:02X}", addr, z80.bus.read(addr));
-    }
+    println!("Memory contents at stop:");
+    z80.memory_dump(0, 50);
 }

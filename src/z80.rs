@@ -89,7 +89,21 @@ impl Z80 {
 
     pub fn display_regs(&self) {
         println!("PC: {:04X} SP: {:04X}", self.reg.pc, self.reg.sp);
-        println!("AF: {:04X} BC: {:04X}", self.reg.get_af(), self.reg.get_bc());
-        println!("DE: {:04X} HL: {:04X}", self.reg.get_de(), self.reg.get_hl());
+        println!(
+            "AF: {:04X} BC: {:04X}",
+            self.reg.get_af(),
+            self.reg.get_bc()
+        );
+        println!(
+            "DE: {:04X} HL: {:04X}",
+            self.reg.get_de(),
+            self.reg.get_hl()
+        );
+    }
+
+    pub fn memory_dump(&self, start_address: u16, end_address: u16) {
+        for addr in start_address..=end_address {
+            println!("addr: {:04X} data: {:02X}", addr, self.bus.read(addr));
+        }
     }
 }
