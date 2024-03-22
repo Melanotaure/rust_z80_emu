@@ -1,5 +1,3 @@
-use std::io::Read;
-
 use rust_z80_emu::z80::*;
 
 fn main() {
@@ -13,7 +11,6 @@ fn main() {
     let mut cycles: usize = 0;
     z80.display_regs();
     println!("");
-    // let mut str = String::new();
     loop {
         cycles += z80.execute() as usize;
         z80.display_regs();
@@ -21,7 +18,6 @@ fn main() {
         if z80.reg.pc == 0x0019 {
             break;
         }
-        // std::io::stdin().read_line(&mut str).unwrap();
     }
     println!("cycles: {}", cycles);
 }
