@@ -1,6 +1,7 @@
 use crate::bus::Bus;
 use crate::registers::Registers;
 
+#[allow(nonstandard_style)]
 pub enum InterruptMode {
     IM_0,
     IM_1,
