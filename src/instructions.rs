@@ -1,6 +1,7 @@
 use crate::bus::{read_io, write_io};
 use crate::cycles::{CYCLES, CYCLES_DD_FD};
 use crate::z80::*;
+use std::io::{self, Write};
 
 enum BitOp {
     AND,
@@ -20,6 +21,10 @@ impl Z80 {
 
     fn jp_nn(&mut self) {
         let nn = self.get_nn();
+        if nn == 0x0000 {
+            self.n_halt = false;
+            return;
+        }
         self.reg.pc = nn.wrapping_sub(1);
         // PC is incremented at the end
     }
@@ -31,6 +36,29 @@ impl Z80 {
     }
 
     fn call_nn(&mut self) {
+        let addrl = self.bus.read(self.reg.pc + 1);
+        let addrh = self.bus.read(self.reg.pc + 2);
+        let addr = u16::from_le_bytes([addrl, addrh]);
+        if addr == 0x0005 {
+            let f = self.reg.c;
+            if f == 0x02 {
+                print!("{}", self.reg.e as char);
+            } else if f == 0x09 {
+                let mut addr = u16::from_le_bytes([self.reg.e, self.reg.d]);
+                loop {
+                    let c = self.bus.read(addr);
+                    if c == 0x24 {
+                        break;
+                    }
+                    print!("{}", c as char);
+                    addr = addr.wrapping_add(1);
+                }
+            }
+            io::stdout().flush().unwrap();
+            self.reg.inc_pc();
+            self.reg.inc_pc();
+            return;
+        }
         // PC is first incremented by 3 to resume the flow after this 3-byte instruction
         let pc = self.reg.pc.wrapping_add(3);
         let [mut pcl, mut pch] = pc.to_le_bytes();
@@ -50,7 +78,8 @@ impl Z80 {
         let pcl = self.bus.read(self.reg.sp);
         self.reg.inc_sp();
         let pch = self.bus.read(self.reg.sp);
-        self.reg.pc = u16::from_be_bytes([pcl, pch]);
+        self.reg.inc_sp();
+        self.reg.pc = u16::from_le_bytes([pcl, pch]);
         self.reg.dec_pc();
     }
 
@@ -303,7 +332,7 @@ impl Z80 {
                 let addr = iy.wrapping_add((d as i8) as u16);
                 self.bus.read(addr)
             }
-            _ => self.bus.read(self.reg.get_hl()), // LD C, (HL)
+            _ => self.bus.read(self.reg.get_hl()),
         }
     }
 
@@ -323,7 +352,7 @@ impl Z80 {
                 let addr = iy.wrapping_add((d as i8) as u16);
                 self.bus.write(addr, reg);
             }
-            _ => self.bus.write(self.reg.get_hl(), reg), // LD C, (HL)
+            _ => self.bus.write(self.reg.get_hl(), reg),
         }
     }
 
@@ -429,8 +458,13 @@ impl Z80 {
                 self.set_h_ixh_iyh(n);
             }
             0x36 => {
-                // LD (HL IX+d IY+d), n when d, n is the second byte (xxyyddnn)
-                let n = self.bus.read(self.reg.pc.wrapping_add(2));
+                let n = if self.p_inst == 0xDD || self.p_inst == 0xFD {
+                    // LD (IX+d IY+d), n -> d is first byte, n is second byte (xxyyddnn)
+                    self.bus.read(self.reg.pc.wrapping_add(2))
+                } else {
+                    // LD (HL), n -> n is first byte (xxyynn)
+                    self.bus.read(self.reg.pc.wrapping_add(1))
+                };
                 self.write_hl_ix_iy(n);
                 self.reg.inc_pc();
             }
@@ -542,18 +576,21 @@ impl Z80 {
                 self.reg.c = self.bus.read(self.reg.sp);
                 self.reg.inc_sp();
                 self.reg.b = self.bus.read(self.reg.sp);
+                self.reg.inc_sp();
             }
             // POP DE
             0xD1 => {
                 self.reg.e = self.bus.read(self.reg.sp);
                 self.reg.inc_sp();
                 self.reg.d = self.bus.read(self.reg.sp);
+                self.reg.inc_sp();
             }
             // POP HL IX IY
             0xE1 => {
                 self.set_l_ixl_iyl(self.bus.read(self.reg.sp));
                 self.reg.inc_sp();
                 self.set_h_ixh_iyh(self.bus.read(self.reg.sp));
+                self.reg.inc_sp();
             }
             // POP AF
             0xF1 => {
@@ -561,6 +598,7 @@ impl Z80 {
                 self.reg.flags.from_byte(f);
                 self.reg.inc_sp();
                 self.reg.a = self.bus.read(self.reg.sp);
+                self.reg.inc_sp();
             }
             // Exchange
             // EX DE, HL

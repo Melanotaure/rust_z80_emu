@@ -103,8 +103,8 @@ impl Z80 {
     }
 
     pub fn memory_dump(&self, start_address: u16, end_address: u16) {
-        for addr in start_address..=end_address {
-            println!("addr: {:04X} data: {:02X}", addr, self.bus.read(addr));
+        for addr in (start_address..=end_address).step_by(16) {
+            println!("{:04X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}", addr, self.bus.read(addr), self.bus.read(addr+1), self.bus.read(addr+2), self.bus.read(addr+3), self.bus.read(addr+4), self.bus.read(addr+5), self.bus.read(addr+6), self.bus.read(addr+7), self.bus.read(addr+8), self.bus.read(addr+9), self.bus.read(addr+10), self.bus.read(addr+11), self.bus.read(addr+12), self.bus.read(addr+13), self.bus.read(addr+14), self.bus.read(addr+15));
         }
     }
 }

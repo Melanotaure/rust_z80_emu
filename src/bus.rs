@@ -1,4 +1,4 @@
-const MEMORY_SIZE: usize = 0xFFFF;
+const MEMORY_SIZE: usize = 65_536;
 
 pub struct Bus {
     memory: [u8; MEMORY_SIZE],
