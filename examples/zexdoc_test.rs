@@ -4,7 +4,7 @@ use rust_z80_emu::z80::*;
 fn main() {
     let mut z80 = Z80::new();
 
-    let code = std::fs::read("resources/prelim.com").unwrap();
+    let code = std::fs::read("resources/zexdoc.com").unwrap();
     for (addr, opcode) in code.iter().enumerate() {
         z80.bus.write((addr + 0x100) as u16, *opcode);
     }

@@ -22,8 +22,8 @@ impl Z80 {
         let c = self.reg.flags.c as u16;
         let hl = self.reg.get_hl();
         let r = hl.wrapping_sub(reg.wrapping_add(c));
-        self.reg.flags.s = r & 0x80 == 0x80;
-        self.reg.flags.z = r == 0;
+        self.reg.flags.s = r & 0x8000 == 0x8000;
+        self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = (r & 0x0FFF) < (reg.wrapping_add(c) & 0x0FFF);
         self.reg.flags.p = (hl as i16).overflowing_sub((reg.wrapping_add(c)) as i16).1;
         self.reg.flags.n = true;
@@ -35,8 +35,8 @@ impl Z80 {
         let c = self.reg.flags.c as u16;
         let hl = self.reg.get_hl();
         let r = hl.wrapping_add(reg).wrapping_add(c);
-        self.reg.flags.s = r & 0x80 == 0x80;
-        self.reg.flags.z = r == 0;
+        self.reg.flags.s = r & 0x8000 == 0x8000;
+        self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = ((hl & 0x0FFF) + (reg & 0x0FFF) + c) > 0x0FFF;
         self.reg.flags.p = (hl as i16).overflowing_add((reg.wrapping_add(c)) as i16).1;
         self.reg.flags.n = false;
