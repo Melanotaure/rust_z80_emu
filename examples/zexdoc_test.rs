@@ -4,20 +4,22 @@ use rust_z80_emu::z80::*;
 fn main() {
     let mut z80 = Z80::new();
 
-    let code = std::fs::read("resources/zexdoc.com").unwrap();
+    let code = std::fs::read("resources/prelim.com").unwrap();
     for (addr, opcode) in code.iter().enumerate() {
-        if addr >= 0x13 {
-            z80.bus.write((addr + 0x100) as u16, *opcode);
-        } else {
-            z80.bus.write(addr as u16, *opcode);
-        }
+        z80.bus.write((addr + 0x100) as u16, *opcode);
     }
 
     let mut cycles: usize = 0;
+    z80.reg.pc = 0x0100_u16;
 
     loop {
         cycles += z80.execute() as usize;
+        if z80.reg.pc < 0x0005_u16 {
+            println!("CPU restarted!");
+            break;
+        }
         if z80.n_halt == false {
+            println!("CPU halted!");
             break;
         }
 

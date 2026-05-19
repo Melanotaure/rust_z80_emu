@@ -21,10 +21,6 @@ impl Z80 {
 
     fn jp_nn(&mut self) {
         let nn = self.get_nn();
-        if nn == 0x0000 {
-            self.n_halt = false;
-            return;
-        }
         self.reg.pc = nn.wrapping_sub(1);
         // PC is incremented at the end
     }
