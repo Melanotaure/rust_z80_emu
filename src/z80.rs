@@ -100,6 +100,11 @@ impl Z80 {
             self.reg.get_de(),
             self.reg.get_hl()
         );
+        println!(
+            "IX: {:04X} IY: {:04X}",
+            self.reg.get_ix(),
+            self.reg.get_iy()
+        );
     }
 
     pub fn memory_dump(&self, start_address: u16, end_address: u16) {

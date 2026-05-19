@@ -307,7 +307,7 @@ impl Z80 {
     fn set_hl_ix_iy(&mut self, data: u16) {
         match self.p_inst {
             0xDD => self.reg.set_ix(data),
-            0xFF => self.reg.set_iy(data),
+            0xFD => self.reg.set_iy(data),
             _ => self.reg.set_hl(data),
         };
     }
@@ -783,7 +783,7 @@ impl Z80 {
             }
             // CALL p, nn
             0xF4 => {
-                if !self.reg.flags.n {
+                if !self.reg.flags.s {
                     self.call_nn();
                     cycles += 7;
                 } else {
@@ -817,9 +817,9 @@ impl Z80 {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
-            // CALL n, nn
+            // CALL m, nn
             0xFC => {
-                if self.reg.flags.n {
+                if self.reg.flags.s {
                     self.call_nn();
                     cycles += 7;
                 } else {
@@ -851,7 +851,7 @@ impl Z80 {
             }
             // RET p
             0xF0 => {
-                if !self.reg.flags.n {
+                if !self.reg.flags.s {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
@@ -877,9 +877,9 @@ impl Z80 {
                     cycles = cycles.wrapping_add(6);
                 }
             }
-            // RET n
+            // RET m
             0xF8 => {
-                if self.reg.flags.n {
+                if self.reg.flags.s {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
