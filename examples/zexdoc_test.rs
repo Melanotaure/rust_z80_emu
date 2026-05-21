@@ -1,10 +1,10 @@
 use rust_z80_emu::z80::*;
-// use std::io;
+use std::io;
 
 fn main() {
     let mut z80 = Z80::new();
 
-    let code = std::fs::read("resources/zexdoc.com").unwrap();
+    let code = std::fs::read("resources/zexdoc.cim").unwrap();
     for (addr, opcode) in code.iter().enumerate() {
         z80.bus.write((addr + 0x100) as u16, *opcode);
     }
@@ -15,20 +15,20 @@ fn main() {
     loop {
         cycles += z80.execute() as usize;
         if z80.reg.pc < 0x0005_u16 {
-            println!("CPU restarted!");
+            println!("\nCPU restarted!");
             break;
         }
         if z80.n_halt == false {
-            println!("CPU halted!");
+            println!("\nCPU halted!");
             break;
         }
 
-        // z80.memory_dump(0x0000, 0x22ff);
-        // println!("");
-        // z80.display_regs();
+        z80.memory_dump(0x0000, 0x22ff);
+        println!("");
+        z80.display_regs();
 
-        // let mut input = String::new();
-        // io::stdin().read_line(&mut input).unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
     }
     println!("cycles: {}", cycles);
 }

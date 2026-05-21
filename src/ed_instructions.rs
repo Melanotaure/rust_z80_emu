@@ -25,7 +25,7 @@ impl Z80 {
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = (r & 0x0FFF) < (reg.wrapping_add(c) & 0x0FFF);
-        self.reg.flags.p = (hl as i16).overflowing_sub((reg.wrapping_add(c)) as i16).1;
+        self.reg.flags.p = hl.overflowing_sub(reg.wrapping_add(c)).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (hl as u32) < (reg as u32 + c as u32);
         r
@@ -38,7 +38,7 @@ impl Z80 {
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = ((hl & 0x0FFF) + (reg & 0x0FFF) + c) > 0x0FFF;
-        self.reg.flags.p = (hl as i16).overflowing_add((reg.wrapping_add(c)) as i16).1;
+        self.reg.flags.p = hl.overflowing_add(reg.wrapping_add(c)).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (hl as u32) + (reg as u32 + c as u32) > 0x0000FFFF;
         r
