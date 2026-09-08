@@ -24,7 +24,7 @@ impl Z80 {
         let r = hl.wrapping_sub(reg.wrapping_add(c));
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
-        self.reg.flags.h = (r & 0x0FFF) < (reg.wrapping_add(c) & 0x0FFF);
+        self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.p = hl.overflowing_sub(reg.wrapping_add(c)).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (hl as u32) < (reg as u32 + c as u32);
@@ -37,7 +37,7 @@ impl Z80 {
         let r = hl.wrapping_add(reg).wrapping_add(c);
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
-        self.reg.flags.h = ((hl & 0x0FFF) + (reg & 0x0FFF) + c) > 0x0FFF;
+        self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.p = hl.overflowing_add(reg.wrapping_add(c)).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (hl as u32) + (reg as u32 + c as u32) > 0x0000FFFF;
@@ -49,7 +49,7 @@ impl Z80 {
         let r = 0_u8.wrapping_sub(a);
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.z = r == 0;
-        self.reg.flags.h = a & 0x0F > 0;
+        self.reg.flags.h = (a ^ r) & 0x10 != 0;
         self.reg.flags.p = a == 0x80;
         self.reg.flags.n = true;
         self.reg.flags.c = a != 0;
@@ -98,7 +98,7 @@ impl Z80 {
         self.reg.set_bc(bc.wrapping_sub(1));
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.z = r == 0;
-        self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
+        self.reg.flags.h = (data ^ r ^ a) & 0x10 != 0;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
@@ -116,7 +116,7 @@ impl Z80 {
         self.reg.set_bc(bc.wrapping_sub(1));
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.z = r == 0;
-        self.reg.flags.h = (data & 0x0F) > (a & 0x0F);
+        self.reg.flags.h = (a ^ r ^ data) & 0x10 != 0;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
@@ -424,5 +424,148 @@ impl Z80 {
             _ => {}
         }
         cycles
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // TEST ADC HL, rr
+    #[test]
+    fn adc_hl_rr_nominal_c0() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = false;
+        let hl = cpu.adc_hl_rr(0x005A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x5AB4);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, false); // Not sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, false); // No half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    #[test]
+    fn adc_hl_rr_nominal_c1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = true;
+        let hl = cpu.adc_hl_rr(0x005A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x5AB5);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, false); // Not sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, false); // No half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    #[test]
+    fn adc_hl_rr_neg_c0_h1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = false;
+        let hl = cpu.adc_hl_rr(0x5A5A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0xB4B4);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, false); // Not sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, true); // Half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, true); // Negative
+    }
+
+    #[test]
+    fn adc_hl_rr_c1_h1_ovf_z1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0xFFFF);
+        cpu.reg.flags.c = true;
+        let hl = cpu.adc_hl_rr(0x0000);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x0000);
+        assert_eq!(cpu.reg.flags.c, true); // Carry after op
+        assert_eq!(cpu.reg.flags.n, false); // Not sub op
+        assert_eq!(cpu.reg.flags.p, true); // Overflow
+        assert_eq!(cpu.reg.flags.h, true); // Half-carry
+        assert_eq!(cpu.reg.flags.z, true); // Zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    // TEST SBC HL, rr
+    #[test]
+    fn sbc_hl_rr_nominal_c0() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = false;
+        let hl = cpu.sbc_hl_rr(0x005A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x5A00);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, true); // Sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, false); // No half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    #[test]
+    fn sbc_hl_rr_nominal_c1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = true;
+        let hl = cpu.sbc_hl_rr(0x005A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x59FF);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, true); // Sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, false); // No half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    #[test]
+    fn sbc_hl_rr_c0_h1_z1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x5A5A);
+        cpu.reg.flags.c = false;
+        let hl = cpu.sbc_hl_rr(0x5A5A);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0x0000);
+        assert_eq!(cpu.reg.flags.c, false); // No carry after op
+        assert_eq!(cpu.reg.flags.n, true); // Sub op
+        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.h, false); // Half-carry
+        assert_eq!(cpu.reg.flags.z, true); // Zero
+        assert_eq!(cpu.reg.flags.s, false); // Not negative
+    }
+
+    #[test]
+    fn sbc_hl_rr_c1_h1_ovf_s1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.set_hl(0x0000);
+        cpu.reg.flags.c = true;
+        let hl = cpu.sbc_hl_rr(0x0000);
+        cpu.reg.set_hl(hl);
+        assert_eq!(cpu.reg.get_hl(), 0xFFFF);
+        assert_eq!(cpu.reg.flags.c, true); // Carry after op
+        assert_eq!(cpu.reg.flags.n, true); // Sub op
+        assert_eq!(cpu.reg.flags.p, true); // Overflow
+        assert_eq!(cpu.reg.flags.h, true); // Half-carry
+        assert_eq!(cpu.reg.flags.z, false); // Not zero
+        assert_eq!(cpu.reg.flags.s, true); // Negative
     }
 }

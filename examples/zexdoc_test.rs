@@ -1,5 +1,5 @@
 use rust_z80_emu::z80::*;
-use std::io;
+// use std::io;
 
 fn main() {
     let mut z80 = Z80::new();
@@ -23,12 +23,12 @@ fn main() {
             break;
         }
 
-        z80.memory_dump(0x0000, 0x22ff);
-        println!("");
-        z80.display_regs();
+        // z80.memory_dump(0x0000, 0x22ff);
+        // println!("");
+        // z80.display_regs();
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+        // let mut input = String::new();
+        // io::stdin().read_line(&mut input).unwrap();
     }
     println!("cycles: {}", cycles);
 }

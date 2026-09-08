@@ -94,7 +94,7 @@ impl Z80 {
         let r = a.wrapping_add(data);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = (a & 0x0F) + (data & 0x0F) > 0x0F;
+        self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
         self.reg.flags.p = (a as i8).overflowing_add(data as i8).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) > 0x00FF;
@@ -109,7 +109,7 @@ impl Z80 {
         let r = a.wrapping_add(data).wrapping_add(c);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = (a & 0x0F) + (data & 0x0F) + c > 0x0F;
+        self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
         self.reg.flags.p = (a as i8).overflowing_add((data.wrapping_add(c)) as i8).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) + (c as u16) > 0x00FF;
@@ -123,7 +123,7 @@ impl Z80 {
         let r = a.wrapping_sub(data);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = (a & 0x0F) < (data & 0x0F);
+        self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
         self.reg.flags.p = (a as i8).overflowing_sub(data as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < (data as u16);
@@ -138,7 +138,7 @@ impl Z80 {
         let r = a.wrapping_sub(data).wrapping_sub(c);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = r & 0x80 == 0x80;
-        self.reg.flags.h = (a & 0x0F) < (data & 0x0F).wrapping_add(c);
+        self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
         self.reg.flags.p = (a as i8).overflowing_sub((data.wrapping_add(c)) as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < ((data as u16) + (c as u16));
@@ -170,7 +170,7 @@ impl Z80 {
         let r = a.wrapping_sub(data);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = (a & 0x0F) < (data & 0x0F);
+        self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
         self.reg.flags.p = (a as i8).overflowing_sub(data as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < (data as u16);
@@ -180,7 +180,7 @@ impl Z80 {
         let r = data.wrapping_add(1);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = data & 0x0F == 0x0F;
+        self.reg.flags.h = (data ^ r) & 0x10 != 0;
         self.reg.flags.p = data == 0x7F;
         self.reg.flags.n = false;
         self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
@@ -192,7 +192,7 @@ impl Z80 {
         let r = data.wrapping_sub(1);
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
-        self.reg.flags.h = data & 0x1F == 0x10;
+        self.reg.flags.h = (data ^ r) & 0x10 != 0;
         self.reg.flags.p = data == 0x80;
         self.reg.flags.n = true;
         self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
@@ -211,7 +211,7 @@ impl Z80 {
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.b5 = r & 0b00000010_00000000 == 0b00000010_00000000;
         self.reg.flags.b3 = r & 0b00001000_00000000 == 0b00001000_00000000;
-        self.reg.flags.h = (hl & 0x0FFF) + (reg & 0x0FFF) > 0x0FFF;
+        self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = hl as u32 + reg as u32 > 0xFFFF;
 
