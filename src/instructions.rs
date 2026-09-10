@@ -221,27 +221,48 @@ impl Z80 {
     }
 
     fn daa(&mut self) {
-        let a = self.reg.a;
-        let rl = if self.reg.a & 0x0F > 0x09 || self.reg.flags.h {
-            0x06_u8
+        let mut a = self.reg.a;
+        let mut correction = 0;
+        let mut carry = self.reg.flags.c;
+
+        if self.reg.flags.n {
+            if self.reg.flags.h {
+                correction |= 0x06;
+            }
+            if self.reg.flags.c {
+                correction |= 0x60;
+            }
         } else {
-            0x00_u8
-        };
-        let rh = if self.reg.a & 0xF0 > 0x90 || self.reg.flags.c {
-            0x60u8
-        } else {
-            0x00_u8
-        };
-        if !self.reg.flags.n {
-            (self.reg.a, self.reg.flags.c) = a.overflowing_add(rh | rl);
-        } else {
-            (self.reg.a, self.reg.flags.c) = a.overflowing_sub(rh | rl);
+            if self.reg.flags.h || (a & 0x0F) > 0x09 {
+                correction |= 0x06;
+            }
+            if self.reg.flags.c || a > 0x99 || (a > 0x8F && (a & 0x0F) > 0x09) {
+                correction |= 0x60;
+                carry = true;
+            }
         }
-        self.reg.flags.s = (self.reg.a as i8) < 0;
-        self.reg.flags.z = self.reg.a == 0;
-        self.reg.flags.h = rl == 0x06_u8;
-        self.reg.flags.p = self.reg.a.count_ones() & 0x01 == 0;
-        self.reg.flags.c = rh == 0x60_u8;
+
+        let half_carry = if self.reg.flags.n {
+            self.reg.flags.h && (a & 0x0F) < 0x06
+        } else {
+            (a & 0x0F) > 0x09
+        };
+
+        if self.reg.flags.n {
+            a = a.wrapping_sub(correction);
+        } else {
+            a = a.wrapping_add(correction);
+        }
+
+        self.reg.flags.s = (a & 0x80) != 0;
+        self.reg.flags.z = a == 0;
+        self.reg.flags.h = half_carry;
+        self.reg.flags.p = a.count_ones() % 2 == 0;
+        self.reg.flags.c = carry;
+        // self.f.y = (a & 0x08) != 0;
+        // self.f.x = (a & 0x20) != 0;
+
+        self.reg.a = a;
     }
 
     fn cpl(&mut self) {
@@ -1681,5 +1702,108 @@ mod tests {
         assert_eq!(cpu.reg.flags.p, p);
         assert_eq!(cpu.reg.flags.n, false);
         assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    // DAA
+    #[test]
+    fn daa_add_7_3() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x07;
+        cpu.add_a_r(0x03);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x10);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, true);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn daa_add_99_1() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x99;
+        cpu.add_a_r(0x01);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, true);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn daa_inc_99() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x99;
+        cpu.reg.a = cpu.inc_r(cpu.reg.a);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, true);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn daa_sub_26_7() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x26;
+        cpu.sub_a_r(0x07);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x19);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn daa_sub_01_5() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x01;
+        cpu.sub_a_r(0x05);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x96);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn daa_dec_00() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.a = 0x00;
+        cpu.reg.a = cpu.dec_r(cpu.reg.a);
+        let n = cpu.reg.flags.n;
+        cpu.daa();
+        assert_eq!(cpu.reg.a, 0x99);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, n);
+        assert_eq!(cpu.reg.flags.c, true);
     }
 }
