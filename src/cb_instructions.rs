@@ -1350,4 +1350,536 @@ mod tests {
         assert_eq!(cpu.reg.flags.n, false);
         assert_eq!(cpu.reg.flags.c, false);
     }
+
+    // SLA r
+    #[test]
+    fn sla_r_nominal() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.b = 0x55;
+        cpu.reg.flags.c = false;
+        cpu.reg.b = cpu.sla_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0xAA);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.reg.b = cpu.sla_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x54);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sla_ix_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xDD;
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAA);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x54);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sla_ix_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xDD;
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAA);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x54);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sla_iy_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x80);
+        cpu.reg.set_iy(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xFD;
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sla_iy_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_iy(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xFD;
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAA);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sla_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x54);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    // SRA r
+    #[test]
+    fn sra_r_nominal() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.b = 0x55;
+        cpu.reg.flags.c = false;
+        cpu.reg.b = cpu.sra_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.reg.b = cpu.sra_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sra_ix_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xDD;
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sra_ix_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xDD;
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sra_iy_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x01);
+        cpu.reg.set_iy(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xFD;
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sra_iy_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0xAA);
+        cpu.reg.set_iy(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xFD;
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xD5);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sra_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xEA);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    // (undocumented) SLL r
+    #[test]
+    fn sll_r_nominal() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.b = 0x55;
+        cpu.reg.flags.c = false;
+        cpu.reg.b = cpu.sll_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0xAB);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.reg.b = cpu.sll_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x57);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sll_ix_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xDD;
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAB);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x57);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sll_ix_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xDD;
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAB);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x57);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    #[test]
+    fn sll_iy_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x80);
+        cpu.reg.set_iy(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xFD;
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x01);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x03);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn sll_iy_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_iy(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xFD;
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0xAB);
+        assert_eq!(cpu.reg.flags.s, true);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.sll_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x57);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
+
+    // SRL r
+    #[test]
+    fn srl_r_nominal() {
+        let mut cpu = Z80::new();
+
+        cpu.reg.b = 0x55;
+        cpu.reg.flags.c = false;
+        cpu.reg.b = cpu.srl_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.reg.b = cpu.srl_r(cpu.reg.b, 0);
+        assert_eq!(cpu.reg.b, 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn srl_ix_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xDD;
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn srl_ix_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x55);
+        cpu.reg.set_ix(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xDD;
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x15);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn srl_iy_pos() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0x01);
+        cpu.reg.set_iy(0x0003);
+        cpu.reg.flags.c = false;
+        let d = 0x0F;
+        cpu.p_inst = 0xFD;
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x00);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, true);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+    }
+
+    #[test]
+    fn srl_iy_neg() {
+        let mut cpu = Z80::new();
+
+        cpu.bus.write(0x0012, 0xAA);
+        cpu.reg.set_iy(0x0021);
+        cpu.reg.flags.c = false;
+        let d = 0xF1;
+        cpu.p_inst = 0xFD;
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x55);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, true);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, false);
+        cpu.srl_r(0, d);
+        assert_eq!(cpu.bus.read(0x0012), 0x2A);
+        assert_eq!(cpu.reg.flags.s, false);
+        assert_eq!(cpu.reg.flags.z, false);
+        assert_eq!(cpu.reg.flags.h, false);
+        assert_eq!(cpu.reg.flags.p, false);
+        assert_eq!(cpu.reg.flags.n, false);
+        assert_eq!(cpu.reg.flags.c, true);
+    }
 }
