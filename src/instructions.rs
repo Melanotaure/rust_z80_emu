@@ -1,7 +1,7 @@
 use crate::bus::{read_io, write_io};
 use crate::cycles::{CYCLES, CYCLES_DD_FD};
 use crate::z80::*;
-use std::io::{self, Write};
+// use std::io::{self, Write};
 
 enum BitOp {
     AND,
@@ -32,29 +32,29 @@ impl Z80 {
     }
 
     fn call_nn(&mut self) {
-        let addrl = self.bus.read(self.reg.pc + 1);
-        let addrh = self.bus.read(self.reg.pc + 2);
-        let addr = u16::from_le_bytes([addrl, addrh]);
-        if addr == 0x0005 {
-            let f = self.reg.c;
-            if f == 0x02 {
-                print!("{}", self.reg.e as char);
-            } else if f == 0x09 {
-                let mut addr = u16::from_le_bytes([self.reg.e, self.reg.d]);
-                loop {
-                    let c = self.bus.read(addr);
-                    if c == 0x24 {
-                        break;
-                    }
-                    print!("{}", c as char);
-                    addr = addr.wrapping_add(1);
-                }
-            }
-            io::stdout().flush().unwrap();
-            self.reg.inc_pc();
-            self.reg.inc_pc();
-            return;
-        }
+        // let addrl = self.bus.read(self.reg.pc + 1);
+        // let addrh = self.bus.read(self.reg.pc + 2);
+        // let addr = u16::from_le_bytes([addrl, addrh]);
+        // if addr == 0x0005 {
+        //     let f = self.reg.c;
+        //     if f == 0x02 {
+        //         print!("{}", self.reg.e as char);
+        //     } else if f == 0x09 {
+        //         let mut addr = u16::from_le_bytes([self.reg.e, self.reg.d]);
+        //         loop {
+        //             let c = self.bus.read(addr);
+        //             if c == 0x24 {
+        //                 break;
+        //             }
+        //             print!("{}", c as char);
+        //             addr = addr.wrapping_add(1);
+        //         }
+        //     }
+        //     io::stdout().flush().unwrap();
+        //     self.reg.inc_pc();
+        //     self.reg.inc_pc();
+        //     return;
+        // }
         // PC is first incremented by 3 to resume the flow after this 3-byte instruction
         let pc = self.reg.pc.wrapping_add(3);
         let [mut pcl, mut pch] = pc.to_le_bytes();
@@ -98,7 +98,7 @@ impl Z80 {
         self.reg.flags.p = (a as i8).overflowing_add(data as i8).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) > 0x00FF;
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
     }
@@ -113,7 +113,7 @@ impl Z80 {
         self.reg.flags.p = (a as i8).overflowing_add((data.wrapping_add(c)) as i8).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) + (c as u16) > 0x00FF;
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
     }
@@ -127,7 +127,7 @@ impl Z80 {
         self.reg.flags.p = (a as i8).overflowing_sub(data as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < (data as u16);
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
     }
@@ -142,7 +142,7 @@ impl Z80 {
         self.reg.flags.p = (a as i8).overflowing_sub((data.wrapping_add(c)) as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < ((data as u16) + (c as u16));
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
     }
@@ -160,7 +160,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = false;
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
     }
@@ -183,7 +183,7 @@ impl Z80 {
         self.reg.flags.h = (data ^ r) & 0x10 != 0;
         self.reg.flags.p = data == 0x7F;
         self.reg.flags.n = false;
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         r
     }
@@ -195,7 +195,7 @@ impl Z80 {
         self.reg.flags.h = (data ^ r) & 0x10 != 0;
         self.reg.flags.p = data == 0x80;
         self.reg.flags.n = true;
-        self.reg.flags.b5 = r & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         r
     }
@@ -207,7 +207,7 @@ impl Z80 {
             _ => self.reg.get_hl(),
         };
         let r = hl.wrapping_add(reg);
-        self.reg.flags.b5 = r & 0b00000010_00000000 == 0b00000010_00000000;
+        self.reg.flags.b5 = r & 0b00100000_00000000 == 0b00100000_00000000;
         self.reg.flags.b3 = r & 0b00001000_00000000 == 0b00001000_00000000;
         self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.n = false;
@@ -1138,6 +1138,8 @@ impl Z80 {
                 self.reg.flags.n = false;
                 self.reg.flags.c = (a & 0x80) == 0x80;
                 self.reg.a = a.rotate_left(1);
+                self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+                self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
             }
             // RLA
             0x17 => {
@@ -1147,6 +1149,8 @@ impl Z80 {
                 self.reg.flags.n = false;
                 self.reg.flags.c = (a & 0x80) == 0x80;
                 self.reg.a = (a.rotate_left(1) & 0xFE) | c;
+                self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+                self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
             }
             // RRCA
             0x0F => {
@@ -1155,6 +1159,8 @@ impl Z80 {
                 self.reg.flags.n = false;
                 self.reg.flags.c = (a & 0x01) == 0x01;
                 self.reg.a = a.rotate_right(1);
+                self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+                self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
             }
             // RRA
             0x1F => {
@@ -1165,6 +1171,8 @@ impl Z80 {
                 self.reg.a =
                     (a.rotate_right(1) & 0x7F) | (if self.reg.flags.c { 0x80 } else { 0x00 });
                 self.reg.flags.c = carry;
+                self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+                self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
             }
             // DAA
             0x27 => self.daa(),

@@ -31,7 +31,7 @@ struct Z80State {
     // wz hidden internal register "MEMPTR"
     // #[serde(default)] if the register is not in the JSON
     #[serde(default)]
-    wz: u16,
+    _wz: u16,
     ram: Vec<(u16, u8)>,
 }
 
@@ -87,13 +87,17 @@ fn run_single_test(test: &Z80Test) {
 
     assert_eq!(cpu.reg.pc, fin.pc, "[{}] PC error", test.name);
     assert_eq!(cpu.reg.sp, fin.sp, "[{}] SP error", test.name);
-    assert_eq!(cpu.reg.a, fin.a, "[{}] Reg A error", test.name);
+    assert_eq!(
+        cpu.reg.a, fin.a,
+        "[{}] Reg A error {}",
+        test.name, cpu.reg.flags.n
+    );
     assert_eq!(cpu.reg.b, fin.b, "[{}] Reg B error", test.name);
     assert_eq!(cpu.reg.c, fin.c, "[{}] Reg C error", test.name);
     assert_eq!(cpu.reg.d, fin.d, "[{}] Reg D error", test.name);
     assert_eq!(cpu.reg.e, fin.e, "[{}] Reg E error", test.name);
     assert_eq!(
-        (cpu.reg.get_af() & 0x0F) as u8,
+        (cpu.reg.get_af() & 0x00FF) as u8,
         fin.f,
         "[{}] Reg F error",
         test.name
