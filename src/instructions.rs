@@ -222,47 +222,34 @@ impl Z80 {
 
     fn daa(&mut self) {
         let mut a = self.reg.a;
-        let mut correction = 0;
-        let mut carry = self.reg.flags.c;
 
-        if self.reg.flags.n {
-            if self.reg.flags.h {
-                correction |= 0x06;
-            }
-            if self.reg.flags.c {
-                correction |= 0x60;
+        if (a & 0x0F > 0x09) || self.reg.flags.h {
+            if self.reg.flags.n {
+                (a, _) = a.overflowing_sub(0x06);
+                self.reg.flags.h = self.reg.a & 0x0F <= 0x09;
+            } else {
+                (a, _) = a.overflowing_add(0x06);
+                self.reg.flags.h = self.reg.a & 0x0F > 0x09;
             }
         } else {
-            if self.reg.flags.h || (a & 0x0F) > 0x09 {
-                correction |= 0x06;
-            }
-            if self.reg.flags.c || a > 0x99 || (a > 0x8F && (a & 0x0F) > 0x09) {
-                correction |= 0x60;
-                carry = true;
-            }
+            self.reg.flags.h = false;
         }
 
-        let half_carry = if self.reg.flags.n {
-            self.reg.flags.h && (a & 0x0F) < 0x06
+        if (a & 0xF0 > 0x90) || self.reg.flags.c {
+            if self.reg.flags.n {
+                (self.reg.a, self.reg.flags.c) = a.overflowing_add(0xA0);
+            } else {
+                (self.reg.a, self.reg.flags.c) = a.overflowing_add(0x60);
+            }
         } else {
-            (a & 0x0F) > 0x09
-        };
-
-        if self.reg.flags.n {
-            a = a.wrapping_sub(correction);
-        } else {
-            a = a.wrapping_add(correction);
+            self.reg.a = a;
         }
 
-        self.reg.flags.s = (a & 0x80) != 0;
-        self.reg.flags.z = a == 0;
-        self.reg.flags.h = half_carry;
-        self.reg.flags.p = a.count_ones() % 2 == 0;
-        self.reg.flags.c = carry;
-        // self.f.y = (a & 0x08) != 0;
-        // self.f.x = (a & 0x20) != 0;
-
-        self.reg.a = a;
+        self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+        self.reg.flags.s = self.reg.a & 0x80 != 0;
+        self.reg.flags.z = self.reg.a == 0;
+        self.reg.flags.p = self.reg.a.count_ones() % 2 == 0;
     }
 
     fn cpl(&mut self) {
