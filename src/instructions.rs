@@ -279,6 +279,8 @@ impl Z80 {
         self.reg.a = !self.reg.a;
         self.reg.flags.h = true;
         self.reg.flags.n = true;
+        self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
     }
 
     fn ccf(&mut self) {
