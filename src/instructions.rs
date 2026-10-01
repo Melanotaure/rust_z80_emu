@@ -107,7 +107,7 @@ impl Z80 {
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn adc_a_r(&mut self, data: u8) {
@@ -123,7 +123,7 @@ impl Z80 {
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn sub_a_r(&mut self, data: u8) {
@@ -138,7 +138,7 @@ impl Z80 {
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn sbc_a_r(&mut self, data: u8) {
@@ -154,7 +154,7 @@ impl Z80 {
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn bit_op_a_r(&mut self, bit_op: BitOp, data: u8) {
@@ -173,7 +173,7 @@ impl Z80 {
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn cp_r(&mut self, data: u8) {
@@ -187,7 +187,7 @@ impl Z80 {
         self.reg.flags.c = (a as u16) < (data as u16);
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn inc_r(&mut self, data: u8) -> u8 {
@@ -199,7 +199,7 @@ impl Z80 {
         self.reg.flags.n = false;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
         r
     }
 
@@ -212,7 +212,7 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
         r
     }
 
@@ -228,7 +228,7 @@ impl Z80 {
         self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = hl as u32 + reg as u32 > 0xFFFF;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
 
         match self.p_inst {
             0xDD => self.reg.set_ix(r),
@@ -290,7 +290,7 @@ impl Z80 {
         self.reg.flags.p = self.reg.a.count_ones() % 2 == 0;
         self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn cpl(&mut self) {
@@ -299,7 +299,7 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn ccf(&mut self) {
@@ -313,7 +313,7 @@ impl Z80 {
             self.reg.flags.b5 = self.reg.flags.b5 || (self.reg.a & 0b00100000 != 0);
             self.reg.flags.b3 = self.reg.flags.b3 || (self.reg.a & 0b00001000 != 0);
         }
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn scf(&mut self) {
@@ -327,7 +327,7 @@ impl Z80 {
             self.reg.flags.b5 = self.reg.flags.b5 || (self.reg.a & 0b00100000 != 0);
             self.reg.flags.b3 = self.reg.flags.b3 || (self.reg.a & 0b00001000 != 0);
         }
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
     }
 
     fn get_h_ixh_iyh(&mut self) -> u8 {
@@ -1255,21 +1255,39 @@ impl Z80 {
             }
             0x39 => self.add_hl_ix_iy_rr(self.reg.sp),
             // INC rr
-            0x03 => self.reg.set_bc(self.reg.get_bc().wrapping_add(1)),
-            0x13 => self.reg.set_de(self.reg.get_de().wrapping_add(1)),
+            0x03 => {
+                self.reg.set_bc(self.reg.get_bc().wrapping_add(1));
+                self.reg.flags.alu = false;
+            }
+            0x13 => {
+                self.reg.set_de(self.reg.get_de().wrapping_add(1));
+                self.reg.flags.alu = false;
+            }
             0x23 => {
                 let data = self.get_hl_ix_iy().wrapping_add(1);
                 self.set_hl_ix_iy(data);
             }
-            0x33 => self.reg.sp = self.reg.sp.wrapping_add(1),
+            0x33 => {
+                self.reg.sp = self.reg.sp.wrapping_add(1);
+                self.reg.flags.alu = false;
+            }
             // DEC rr
-            0x0B => self.reg.set_bc(self.reg.get_bc().wrapping_sub(1)),
-            0x1B => self.reg.set_de(self.reg.get_de().wrapping_sub(1)),
+            0x0B => {
+                self.reg.set_bc(self.reg.get_bc().wrapping_sub(1));
+                self.reg.flags.alu = false;
+            }
+            0x1B => {
+                self.reg.set_de(self.reg.get_de().wrapping_sub(1));
+                self.reg.flags.alu = false;
+            }
             0x2B => {
                 let data = self.get_hl_ix_iy().wrapping_sub(1);
                 self.set_hl_ix_iy(data);
             }
-            0x3B => self.reg.sp = self.reg.sp.wrapping_sub(1),
+            0x3B => {
+                self.reg.sp = self.reg.sp.wrapping_sub(1);
+                self.reg.flags.alu = false;
+            }
 
             // Rotate group
             // RLCA
@@ -1281,6 +1299,7 @@ impl Z80 {
                 self.reg.a = a.rotate_left(1);
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
             }
             // RLA
             0x17 => {
@@ -1292,6 +1311,7 @@ impl Z80 {
                 self.reg.a = (a.rotate_left(1) & 0xFE) | c;
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
             }
             // RRCA
             0x0F => {
@@ -1302,6 +1322,7 @@ impl Z80 {
                 self.reg.a = a.rotate_right(1);
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
             }
             // RRA
             0x1F => {
@@ -1314,6 +1335,7 @@ impl Z80 {
                 self.reg.flags.c = carry;
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
             }
             // DAA
             0x27 => self.daa(),

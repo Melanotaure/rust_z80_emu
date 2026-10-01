@@ -21,7 +21,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -51,7 +51,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -82,7 +82,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -113,7 +113,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -143,7 +143,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -173,7 +173,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -203,7 +203,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -233,7 +233,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = true;
+        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
         match self.p_inst {
             0xDD => self
                 .bus

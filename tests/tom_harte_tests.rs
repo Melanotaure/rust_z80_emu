@@ -103,7 +103,13 @@ fn run_single_test(test: &Z80Test) {
     );
     assert_eq!(cpu.reg.h, fin.h, "[{}] Reg H error", test.name);
     assert_eq!(cpu.reg.l, fin.l, "[{}] Reg L error", test.name);
-    assert_eq!(cpu.reg.flags.alu, fin.q != 0, "[{}] Reg Q error", test.name);
+    assert_eq!(
+        cpu.reg.flags.alu,
+        fin.q != 0,
+        "[{}] Reg Q error {}",
+        test.name,
+        cpu.reg.flags.to_byte()
+    );
 
     for &(addr, val) in &fin.ram {
         let actual_val = cpu.bus.read(addr);
