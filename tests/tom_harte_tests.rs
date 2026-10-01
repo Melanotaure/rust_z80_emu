@@ -28,6 +28,7 @@ struct Z80State {
     iff1: u8,
     iff2: u8,
     im: u8,
+    q: u8,
     // wz hidden internal register "MEMPTR"
     // #[serde(default)] if the register is not in the JSON
     #[serde(default)]
@@ -76,6 +77,7 @@ fn run_single_test(test: &Z80Test) {
         2 => InterruptMode::IM_2,
         _ => InterruptMode::IM_0,
     };
+    cpu.reg.flags.alu = init.q != 0;
 
     for &(addr, val) in &init.ram {
         cpu.bus.write(addr, val);
@@ -87,11 +89,7 @@ fn run_single_test(test: &Z80Test) {
 
     assert_eq!(cpu.reg.pc, fin.pc, "[{}] PC error", test.name);
     assert_eq!(cpu.reg.sp, fin.sp, "[{}] SP error", test.name);
-    assert_eq!(
-        cpu.reg.a, fin.a,
-        "[{}] Reg A error {}",
-        test.name, cpu.reg.flags.n
-    );
+    assert_eq!(cpu.reg.a, fin.a, "[{}] Reg A error", test.name);
     assert_eq!(cpu.reg.b, fin.b, "[{}] Reg B error", test.name);
     assert_eq!(cpu.reg.c, fin.c, "[{}] Reg C error", test.name);
     assert_eq!(cpu.reg.d, fin.d, "[{}] Reg D error", test.name);
@@ -99,11 +97,13 @@ fn run_single_test(test: &Z80Test) {
     assert_eq!(
         (cpu.reg.get_af() & 0x00FF) as u8,
         fin.f,
-        "[{}] Reg F error",
-        test.name
+        "[{}] Reg F error {}",
+        test.name,
+        cpu.reg.a
     );
     assert_eq!(cpu.reg.h, fin.h, "[{}] Reg H error", test.name);
     assert_eq!(cpu.reg.l, fin.l, "[{}] Reg L error", test.name);
+    assert_eq!(cpu.reg.flags.alu, fin.q != 0, "[{}] Reg Q error", test.name);
 
     for &(addr, val) in &fin.ram {
         let actual_val = cpu.bus.read(addr);

@@ -10,12 +10,14 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = data.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
         data
     }
 
     fn out_c_r(&mut self, reg: u8) {
         let addr = self.reg.get_bc();
         write_io(addr, reg);
+        self.reg.flags.alu = false;
     }
 
     fn sbc_hl_rr(&mut self, reg: u16) -> u16 {
@@ -28,6 +30,7 @@ impl Z80 {
         self.reg.flags.p = hl.overflowing_sub(reg.wrapping_add(c)).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (hl as u32) < (reg as u32 + c as u32);
+        self.reg.flags.alu = true;
         r
     }
 
@@ -41,6 +44,7 @@ impl Z80 {
         self.reg.flags.p = hl.overflowing_add(reg.wrapping_add(c)).1;
         self.reg.flags.n = false;
         self.reg.flags.c = (hl as u32) + (reg as u32 + c as u32) > 0x0000FFFF;
+        self.reg.flags.alu = true;
         r
     }
 
@@ -54,6 +58,7 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.c = a != 0;
         self.reg.a = r;
+        self.reg.flags.alu = true;
     }
 
     fn ldi(&mut self) {
@@ -65,11 +70,12 @@ impl Z80 {
         self.reg.set_de(d.wrapping_add(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
-        self.reg.flags.b5 = data & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = data & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
     }
 
     fn ldd(&mut self) {
@@ -81,11 +87,12 @@ impl Z80 {
         self.reg.set_de(d.wrapping_sub(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
-        self.reg.flags.b5 = data & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = data & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
     }
 
     fn cpi(&mut self) {
@@ -102,8 +109,9 @@ impl Z80 {
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
-        self.reg.flags.b5 = n & 0b00000010 == 0b00000010;
+        self.reg.flags.b5 = n & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = true;
     }
 
     fn cpd(&mut self) {
@@ -122,6 +130,7 @@ impl Z80 {
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
         self.reg.flags.b5 = n & 0b00000010 == 0b00000010;
         self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = true;
     }
 
     fn ini(&mut self) {
@@ -136,6 +145,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
+        self.reg.flags.alu = true;
     }
 
     fn ind(&mut self) {
@@ -150,6 +160,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
+        self.reg.flags.alu = true;
     }
 
     fn outi(&mut self) {
@@ -164,6 +175,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
+        self.reg.flags.alu = true;
     }
 
     fn outd(&mut self) {
@@ -178,6 +190,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
+        self.reg.flags.alu = true;
     }
 
     fn ld_a_ri(&mut self, reg: u8) {
@@ -187,6 +200,7 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = self.iff2;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
     }
 
     fn rld(&mut self) {
@@ -200,6 +214,7 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = a.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
         self.reg.a = a;
         self.bus.write(self.reg.get_hl(), n);
     }
@@ -215,6 +230,7 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = a.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
+        self.reg.flags.alu = true;
         self.reg.a = a;
         self.bus.write(self.reg.get_hl(), n);
     }

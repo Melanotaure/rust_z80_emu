@@ -21,6 +21,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -50,6 +51,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -80,6 +82,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -110,6 +113,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -139,6 +143,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -168,6 +173,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -197,6 +203,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -226,6 +233,7 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
+        self.reg.flags.alu = true;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -269,6 +277,7 @@ impl Z80 {
         self.reg.flags.h = true;
         self.reg.flags.p = self.reg.flags.z;
         self.reg.flags.n = false;
+        self.reg.flags.alu = false;
     }
 
     fn res_b_r(&mut self, bit: u8, reg: u8, d: u8) -> u8 {
@@ -293,6 +302,7 @@ impl Z80 {
                 .write(self.reg.get_iy().wrapping_add((d as i8) as u16), r),
             _ => {}
         }
+        self.reg.flags.alu = false;
         r
     }
 
@@ -317,6 +327,7 @@ impl Z80 {
                 .write(self.reg.get_iy().wrapping_add((d as i8) as u16), r),
             _ => {}
         }
+        self.reg.flags.alu = false;
         r
     }
 

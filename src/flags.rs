@@ -1,13 +1,14 @@
 // Special management for flags
 pub struct Flags {
-    pub s: bool,  // sign                 : bit 7
-    pub z: bool,  // zero                 : bit 6
-    pub b5: bool, // unused               : bit 5
-    pub h: bool,  // half carry           : bit 4
-    pub b3: bool, // unused               : bit 3
-    pub p: bool,  // parity / overflow    : bit 2
-    pub n: bool,  // subtract             : bit 1
-    pub c: bool,  // carry                : bit 0
+    pub s: bool,   // sign                 : bit 7
+    pub z: bool,   // zero                 : bit 6
+    pub b5: bool,  // unused               : bit 5
+    pub h: bool,   // half carry           : bit 4
+    pub b3: bool,  // unused               : bit 3
+    pub p: bool,   // parity / overflow    : bit 2
+    pub n: bool,   // subtract             : bit 1
+    pub c: bool,   // carry                : bit 0
+    pub alu: bool, // alu computed flag    : xxx x
 }
 
 impl Flags {
@@ -21,6 +22,7 @@ impl Flags {
             p: true,
             n: true,
             c: true,
+            alu: false,
         }
     }
 
@@ -54,5 +56,6 @@ impl Flags {
         self.p = false;
         self.n = false;
         self.c = false;
+        self.alu = false;
     }
 }
