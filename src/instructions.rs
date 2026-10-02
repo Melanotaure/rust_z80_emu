@@ -101,13 +101,13 @@ impl Z80 {
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
-        self.reg.flags.p = (a as i8).overflowing_add(data as i8).1;
+        self.reg.flags.p = ((a ^ r) & (data ^ r) & 0x80) != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) > 0x00FF;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn adc_a_r(&mut self, data: u8) {
@@ -115,15 +115,15 @@ impl Z80 {
         let a = self.reg.a;
         let r = a.wrapping_add(data).wrapping_add(c);
         self.reg.flags.z = r == 0x00;
-        self.reg.flags.s = (r as i8) < 0;
+        self.reg.flags.s = r & 0x80 != 0;
         self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
-        self.reg.flags.p = (a as i8).overflowing_add((data.wrapping_add(c)) as i8).1;
+        self.reg.flags.p = ((a ^ r) & (data ^ r) & 0x80) != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (a as u16) + (data as u16) + (c as u16) > 0x00FF;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn sub_a_r(&mut self, data: u8) {
@@ -132,13 +132,13 @@ impl Z80 {
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = (r as i8) < 0;
         self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
-        self.reg.flags.p = (a as i8).overflowing_sub(data as i8).1;
+        self.reg.flags.p = ((a ^ data) & (a ^ r) & 0x80) != 0;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < (data as u16);
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn sbc_a_r(&mut self, data: u8) {
@@ -148,32 +148,40 @@ impl Z80 {
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = r & 0x80 == 0x80;
         self.reg.flags.h = (a ^ data ^ r) & 0x10 != 0;
-        self.reg.flags.p = (a as i8).overflowing_sub((data.wrapping_add(c)) as i8).1;
+        self.reg.flags.p = ((a ^ data) & (a ^ r) & 0x80) != 0;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < ((data as u16) + (c as u16));
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn bit_op_a_r(&mut self, bit_op: BitOp, data: u8) {
         let a = self.reg.a;
         let r = match bit_op {
-            BitOp::AND => a & data,
-            BitOp::XOR => a ^ data,
-            BitOp::OR => a | data,
+            BitOp::AND => {
+                self.reg.flags.h = true;
+                a & data
+            }
+            BitOp::XOR => {
+                self.reg.flags.h = false;
+                a ^ data
+            }
+            BitOp::OR => {
+                self.reg.flags.h = false;
+                a | data
+            }
         };
         self.reg.flags.z = r == 0x00;
         self.reg.flags.s = r & 0x80 == 0x80;
-        self.reg.flags.h = true;
-        self.reg.flags.p = r.count_ones() & 0x01 == 0;
+        self.reg.flags.p = r.count_ones() % 2 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = false;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn cp_r(&mut self, data: u8) {
@@ -187,7 +195,7 @@ impl Z80 {
         self.reg.flags.c = (a as u16) < (data as u16);
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn inc_r(&mut self, data: u8) -> u8 {
@@ -212,7 +220,7 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
         r
     }
 
@@ -228,7 +236,7 @@ impl Z80 {
         self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = hl as u32 + reg as u32 > 0xFFFF;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
 
         match self.p_inst {
             0xDD => self.reg.set_ix(r),
@@ -290,7 +298,7 @@ impl Z80 {
         self.reg.flags.p = self.reg.a.count_ones() % 2 == 0;
         self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn cpl(&mut self) {
@@ -299,7 +307,7 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
         self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn ccf(&mut self) {
@@ -313,7 +321,7 @@ impl Z80 {
             self.reg.flags.b5 = self.reg.flags.b5 || (self.reg.a & 0b00100000 != 0);
             self.reg.flags.b3 = self.reg.flags.b3 || (self.reg.a & 0b00001000 != 0);
         }
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn scf(&mut self) {
@@ -327,7 +335,7 @@ impl Z80 {
             self.reg.flags.b5 = self.reg.flags.b5 || (self.reg.a & 0b00100000 != 0);
             self.reg.flags.b3 = self.reg.flags.b3 || (self.reg.a & 0b00001000 != 0);
         }
-        self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
     fn get_h_ixh_iyh(&mut self) -> u8 {
@@ -440,47 +448,95 @@ impl Z80 {
 
             // 8-bit load group
             // Destination reg = b
-            0x40 => {}                                 // LD B, B
-            0x41 => self.reg.b = self.reg.c,           // LD B, C
-            0x42 => self.reg.b = self.reg.d,           // LD B, D
-            0x43 => self.reg.b = self.reg.e,           // LD B, E
+            0x40 => self.reg.flags.alu = false, // LD B, B
+            0x41 => {
+                self.reg.b = self.reg.c; // LD B, C
+                self.reg.flags.alu = false;
+            }
+            0x42 => {
+                self.reg.b = self.reg.d; // LD B, D
+                self.reg.flags.alu = false;
+            }
+            0x43 => {
+                self.reg.b = self.reg.e; // LD B, E
+                self.reg.flags.alu = false;
+            }
             0x44 => self.reg.b = self.get_h_ixh_iyh(), // LD B,L IXL IYL
             0x45 => self.reg.b = self.get_l_ixl_iyl(), // LD B,H IXH IYH
             0x46 => self.reg.b = self.read_hl_ix_iy(), // LD B, (HL IX+d IY+d)
-            0x47 => self.reg.b = self.reg.a,           // LD B, A
+            0x47 => {
+                self.reg.b = self.reg.a; // LD B, A
+                self.reg.flags.alu = false;
+            }
             // Destination reg = c
-            0x48 => self.reg.c = self.reg.b,           // LD C, B
-            0x49 => {}                                 // LD C, C
-            0x4A => self.reg.c = self.reg.d,           // LD C, D
-            0x4B => self.reg.c = self.reg.e,           // LD C, E
+            0x48 => {
+                self.reg.c = self.reg.b; // LD C, B
+                self.reg.flags.alu = false;
+            }
+            0x49 => self.reg.flags.alu = false, // LD C, C
+            0x4A => {
+                self.reg.c = self.reg.d; // LD C, D
+                self.reg.flags.alu = false;
+            }
+            0x4B => {
+                self.reg.c = self.reg.e; // LD C, E
+                self.reg.flags.alu = false;
+            }
             0x4C => self.reg.c = self.get_h_ixh_iyh(), // LD C, H IXH IYH
             0x4D => self.reg.c = self.get_l_ixl_iyl(), // LD C, L IXL, IYL
             0x4E => self.reg.c = self.read_hl_ix_iy(), // LD C, (HL IX+d IY+d)
-            0x4F => self.reg.c = self.reg.a,           // LD C, A
+            0x4F => {
+                self.reg.c = self.reg.a; // LD C, A
+                self.reg.flags.alu = false;
+            }
             // Destination reg = d
-            0x50 => self.reg.d = self.reg.b,           // LD D, B
-            0x51 => self.reg.d = self.reg.c,           // LD D, C
-            0x52 => {}                                 // LD D, D
-            0x53 => self.reg.d = self.reg.e,           // LD D, E
+            0x50 => {
+                self.reg.d = self.reg.b; // LD D, B
+                self.reg.flags.alu = false;
+            }
+            0x51 => {
+                self.reg.d = self.reg.c; // LD D, C
+                self.reg.flags.alu = false;
+            }
+            0x52 => self.reg.flags.alu = false, // LD D, D
+            0x53 => {
+                self.reg.d = self.reg.e; // LD D, E
+                self.reg.flags.alu = false;
+            }
             0x54 => self.reg.d = self.get_h_ixh_iyh(), // LD D, H IXH IYH
             0x55 => self.reg.d = self.get_l_ixl_iyl(), // LD D, L IXL IYL
             0x56 => self.reg.d = self.read_hl_ix_iy(), // LD D, (HL IX+d IY+d)
-            0x57 => self.reg.d = self.reg.a,           // LD D, A
+            0x57 => {
+                self.reg.d = self.reg.a; // LD D, A
+                self.reg.flags.alu = false;
+            }
             // Destination reg = e
-            0x58 => self.reg.e = self.reg.b,           // LD E, B
-            0x59 => self.reg.e = self.reg.c,           // LD E, C
-            0x5A => self.reg.e = self.reg.d,           // LD E, D
-            0x5B => {}                                 // LD E, E
+            0x58 => {
+                self.reg.e = self.reg.b; // LD E, B
+                self.reg.flags.alu = false;
+            }
+            0x59 => {
+                self.reg.e = self.reg.c; // LD E, C
+                self.reg.flags.alu = false;
+            }
+            0x5A => {
+                self.reg.e = self.reg.d; // LD E, D
+                self.reg.flags.alu = false;
+            }
+            0x5B => self.reg.flags.alu = false,        // LD E, E
             0x5C => self.reg.e = self.get_h_ixh_iyh(), // LD E, H IXH IYH
             0x5D => self.reg.e = self.get_l_ixl_iyl(), // LD E, L IXL IYL
             0x5E => self.reg.e = self.read_hl_ix_iy(), // LD E, (HL IX+d IY+d)
-            0x5F => self.reg.e = self.reg.a,           // LD E, A
+            0x5F => {
+                self.reg.e = self.reg.a; // LD E, A
+                self.reg.flags.alu = false;
+            }
             // Destination reg = h
             0x60 => self.set_h_ixh_iyh(self.reg.b), // LD H, B
             0x61 => self.set_h_ixh_iyh(self.reg.c), // LD H, C
             0x62 => self.set_h_ixh_iyh(self.reg.d), // LD H, D
             0x63 => self.set_h_ixh_iyh(self.reg.e), // LD H, E
-            0x64 => {}                              // LD H, H
+            0x64 => self.reg.flags.alu = false,     // LD H, H
             0x65 => {
                 let reg = self.get_l_ixl_iyl();
                 self.set_h_ixh_iyh(reg); // LD H, L
@@ -496,7 +552,7 @@ impl Z80 {
                 let reg = self.get_h_ixh_iyh();
                 self.set_l_ixl_iyl(reg); // LD L, H
             }
-            0x6D => {}                                 // LD L, L
+            0x6D => self.reg.flags.alu = false,        // LD L, L
             0x6E => self.reg.l = self.read_hl_ix_iy(), // LD L, (HL IX+d IY+d)
             0x6F => self.set_l_ixl_iyl(self.reg.a),    // LD L, A
             // Destination reg = (HL IX+d IY+d)
@@ -509,24 +565,38 @@ impl Z80 {
             // 0x76 => HALT treated elsewhere
             0x77 => self.write_hl_ix_iy(self.reg.a), // LD (HL), A
             // Destination reg = a
-            0x78 => self.reg.a = self.reg.b,           // LD A, B
-            0x79 => self.reg.a = self.reg.c,           // LD A, C
-            0x7A => self.reg.a = self.reg.d,           // LD A, D
-            0x7B => self.reg.a = self.reg.e,           // LD A, E
+            0x78 => {
+                self.reg.a = self.reg.b; // LD A, B
+                self.reg.flags.alu = false;
+            }
+            0x79 => {
+                self.reg.a = self.reg.c; // LD A, C
+                self.reg.flags.alu = false;
+            }
+            0x7A => {
+                self.reg.a = self.reg.d; // LD A, D
+                self.reg.flags.alu = false;
+            }
+            0x7B => {
+                self.reg.a = self.reg.e; // LD A, E
+                self.reg.flags.alu = false;
+            }
             0x7C => self.reg.a = self.get_h_ixh_iyh(), // LD A, H
             0x7D => self.reg.a = self.get_l_ixl_iyl(), // LD A, L
             0x7E => self.reg.a = self.read_hl_ix_iy(), // LD A, (HL)
-            0x7F => {}                                 // LD A, A
+            0x7F => self.reg.flags.alu = false,        // LD A, A
             // LD r, n
             0x06 => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
                 self.reg.b = n;
+                self.reg.flags.alu = false;
             }
             0x16 => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
                 self.reg.d = n;
+                self.reg.flags.alu = false;
             }
             0x26 => {
                 self.reg.inc_pc();
@@ -548,11 +618,13 @@ impl Z80 {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
                 self.reg.c = n;
+                self.reg.flags.alu = false;
             }
             0x1E => {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
                 self.reg.e = n;
+                self.reg.flags.alu = false;
             }
             0x2E => {
                 self.reg.inc_pc();
@@ -563,6 +635,7 @@ impl Z80 {
                 self.reg.inc_pc();
                 let n = self.bus.read(self.reg.pc);
                 self.reg.a = n;
+                self.reg.flags.alu = false;
             }
             // LD (BC), A
             0x02 => {
@@ -640,6 +713,7 @@ impl Z80 {
                 self.bus.write(self.reg.sp, self.reg.b);
                 self.reg.dec_sp();
                 self.bus.write(self.reg.sp, self.reg.c);
+                self.reg.flags.alu = false;
             }
             // PUSH DE
             0xD5 => {
@@ -647,6 +721,7 @@ impl Z80 {
                 self.bus.write(self.reg.sp, self.reg.d);
                 self.reg.dec_sp();
                 self.bus.write(self.reg.sp, self.reg.e);
+                self.reg.flags.alu = false;
             }
             // PUSH HL IX IY
             0xE5 => {
@@ -663,6 +738,7 @@ impl Z80 {
                 self.bus.write(self.reg.sp, self.reg.a);
                 self.reg.dec_sp();
                 self.bus.write(self.reg.sp, self.reg.flags.to_byte());
+                self.reg.flags.alu = false;
             }
             // POP BC
             0xC1 => {
@@ -670,6 +746,7 @@ impl Z80 {
                 self.reg.inc_sp();
                 self.reg.b = self.bus.read(self.reg.sp);
                 self.reg.inc_sp();
+                self.reg.flags.alu = false;
             }
             // POP DE
             0xD1 => {
@@ -677,6 +754,7 @@ impl Z80 {
                 self.reg.inc_sp();
                 self.reg.d = self.bus.read(self.reg.sp);
                 self.reg.inc_sp();
+                self.reg.flags.alu = false;
             }
             // POP HL IX IY
             0xE1 => {
@@ -684,6 +762,7 @@ impl Z80 {
                 self.reg.inc_sp();
                 self.set_h_ixh_iyh(self.bus.read(self.reg.sp));
                 self.reg.inc_sp();
+                self.reg.flags.alu = false;
             }
             // POP AF
             0xF1 => {
@@ -692,6 +771,7 @@ impl Z80 {
                 self.reg.inc_sp();
                 self.reg.a = self.bus.read(self.reg.sp);
                 self.reg.inc_sp();
+                self.reg.flags.alu = false;
             }
             // Exchange
             // EX DE, HL
@@ -700,6 +780,7 @@ impl Z80 {
                 let hl = self.reg.get_hl();
                 self.reg.set_de(hl);
                 self.reg.set_hl(de);
+                self.reg.flags.alu = false;
             }
             // EX AF,AF'
             0x08 => {
@@ -707,6 +788,7 @@ impl Z80 {
                 let eaf = self.reg.eaf;
                 self.reg.set_af(eaf);
                 self.reg.eaf = af;
+                self.reg.flags.alu = false;
             }
             // EXX
             0xD9 => {
@@ -719,6 +801,7 @@ impl Z80 {
                 let tmp = self.reg.get_hl();
                 self.reg.set_hl(self.reg.ehl);
                 self.reg.ehl = tmp;
+                self.reg.flags.alu = false;
             }
             // EX (SP), HL IX IY
             0xE3 => {
@@ -731,6 +814,7 @@ impl Z80 {
                 let data = self.get_h_ixh_iyh();
                 self.bus.write(self.reg.sp, data);
                 self.set_h_ixh_iyh(n);
+                self.reg.flags.alu = false;
             }
 
             // Jump group
@@ -809,6 +893,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
             }
             // JR c, e
             0x38 => {
@@ -817,6 +902,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
             }
             // DJNZ e
             0x10 => {
@@ -827,6 +913,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
             }
             // JR nz, e
             0x20 => {
@@ -835,6 +922,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
             }
             // JR nc, nn
             0x30 => {
@@ -843,6 +931,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
             }
             // JP (HL)
             0xE9 => {
@@ -1135,7 +1224,7 @@ impl Z80 {
                 let data = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::OR, data);
             }
-            0xB7 => self.cp_r(self.reg.a),
+            0xB7 => self.bit_op_a_r(BitOp::OR, self.reg.a),
             // CP A, r
             0xB8 => self.cp_r(self.reg.b),
             0xB9 => self.cp_r(self.reg.c),
@@ -1209,11 +1298,13 @@ impl Z80 {
                 let data = self.get_h_ixh_iyh();
                 let reg = self.inc_r(data);
                 self.set_h_ixh_iyh(reg);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x34 => {
                 let mut n = self.read_hl_ix_iy();
                 n = self.inc_r(n);
                 self.write_hl_ix_iy(n);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x0C => self.reg.c = self.inc_r(self.reg.c),
             0x1C => self.reg.e = self.inc_r(self.reg.e),
@@ -1221,6 +1312,7 @@ impl Z80 {
                 let data = self.get_l_ixl_iyl();
                 let reg = self.inc_r(data);
                 self.set_l_ixl_iyl(reg);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x3C => self.reg.a = self.inc_r(self.reg.a),
             // DEC r
@@ -1230,11 +1322,13 @@ impl Z80 {
                 let data = self.get_h_ixh_iyh();
                 let reg = self.dec_r(data);
                 self.set_h_ixh_iyh(reg);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x35 => {
                 let mut n = self.read_hl_ix_iy();
                 n = self.dec_r(n);
                 self.write_hl_ix_iy(n);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x0D => self.reg.c = self.dec_r(self.reg.c),
             0x1D => self.reg.e = self.dec_r(self.reg.e),
@@ -1242,6 +1336,7 @@ impl Z80 {
                 let data = self.get_l_ixl_iyl();
                 let reg = self.dec_r(data);
                 self.set_l_ixl_iyl(reg);
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x3D => self.reg.a = self.dec_r(self.reg.a),
 
@@ -1299,7 +1394,7 @@ impl Z80 {
                 self.reg.a = a.rotate_left(1);
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0;
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             // RLA
             0x17 => {
@@ -1311,7 +1406,7 @@ impl Z80 {
                 self.reg.a = (a.rotate_left(1) & 0xFE) | c;
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0
             }
             // RRCA
             0x0F => {
@@ -1322,7 +1417,7 @@ impl Z80 {
                 self.reg.a = a.rotate_right(1);
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0
             }
             // RRA
             0x1F => {
@@ -1335,7 +1430,7 @@ impl Z80 {
                 self.reg.flags.c = carry;
                 self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
                 self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
-                self.reg.flags.alu = self.reg.flags.to_byte() & 0x0F != 0
+                self.reg.flags.alu = self.reg.flags.to_byte() != 0
             }
             // DAA
             0x27 => self.daa(),
@@ -1347,8 +1442,8 @@ impl Z80 {
             0x37 => self.scf(),
             // HALT
             0x76 => {
-                self.reg.dec_pc();
                 self.n_halt = false;
+                self.reg.flags.alu = false;
             }
             // DI
             0xF3 => {
