@@ -311,7 +311,7 @@ impl Z80 {
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.n = false;
         self.reg.flags.c = !self.reg.flags.c;
-        if self.reg.flags.alu {
+        if self.reg.flags.alu && self.p_inst != 0xDD && self.p_inst != 0xFD {
             self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
             self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
         } else {
@@ -325,9 +325,9 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.n = false;
         self.reg.flags.c = true;
-        if self.reg.flags.alu {
-            self.reg.flags.b5 = self.reg.a & 0b00100000 == 0b00100000;
-            self.reg.flags.b3 = self.reg.a & 0b00001000 == 0b00001000;
+        if self.reg.flags.alu && self.p_inst != 0xDD && self.p_inst != 0xFD {
+            self.reg.flags.b5 = self.reg.a & 0b00100000 != 0;
+            self.reg.flags.b3 = self.reg.a & 0b00001000 != 0;
         } else {
             self.reg.flags.b5 = self.reg.flags.b5 || (self.reg.a & 0b00100000 != 0);
             self.reg.flags.b3 = self.reg.flags.b3 || (self.reg.a & 0b00001000 != 0);
@@ -389,25 +389,31 @@ impl Z80 {
         };
     }
 
-    pub fn read_hl_ix_iy(&mut self) -> u8 {
+    pub fn read_hl_ix_iy(&mut self) -> (u16, u8) {
         self.reg.flags.alu = false;
+        let addr: u16;
+        let n: u8;
         match self.p_inst {
             0xDD => {
                 self.reg.inc_pc();
                 let d = self.bus.read(self.reg.pc);
                 let ix = self.reg.get_ix();
-                let addr = ix.wrapping_add((d as i8) as u16);
-                self.bus.read(addr)
+                addr = ix.wrapping_add((d as i8) as u16);
+                n = self.bus.read(addr);
             }
             0xFD => {
                 self.reg.inc_pc();
                 let d = self.bus.read(self.reg.pc);
                 let iy = self.reg.get_iy();
-                let addr = iy.wrapping_add((d as i8) as u16);
-                self.bus.read(addr)
+                addr = iy.wrapping_add((d as i8) as u16);
+                n = self.bus.read(addr);
             }
-            _ => self.bus.read(self.reg.get_hl()),
+            _ => {
+                addr = self.reg.get_hl();
+                n = self.bus.read(addr);
+            }
         }
+        (addr, n)
     }
 
     fn write_hl_ix_iy(&mut self, reg: u8) {
@@ -460,7 +466,7 @@ impl Z80 {
             }
             0x44 => self.reg.b = self.get_h_ixh_iyh(), // LD B,L IXL IYL
             0x45 => self.reg.b = self.get_l_ixl_iyl(), // LD B,H IXH IYH
-            0x46 => self.reg.b = self.read_hl_ix_iy(), // LD B, (HL IX+d IY+d)
+            0x46 => (_, self.reg.b) = self.read_hl_ix_iy(), // LD B, (HL IX+d IY+d)
             0x47 => {
                 self.reg.b = self.reg.a; // LD B, A
                 self.reg.flags.alu = false;
@@ -481,7 +487,7 @@ impl Z80 {
             }
             0x4C => self.reg.c = self.get_h_ixh_iyh(), // LD C, H IXH IYH
             0x4D => self.reg.c = self.get_l_ixl_iyl(), // LD C, L IXL, IYL
-            0x4E => self.reg.c = self.read_hl_ix_iy(), // LD C, (HL IX+d IY+d)
+            0x4E => (_, self.reg.c) = self.read_hl_ix_iy(), // LD C, (HL IX+d IY+d)
             0x4F => {
                 self.reg.c = self.reg.a; // LD C, A
                 self.reg.flags.alu = false;
@@ -502,7 +508,7 @@ impl Z80 {
             }
             0x54 => self.reg.d = self.get_h_ixh_iyh(), // LD D, H IXH IYH
             0x55 => self.reg.d = self.get_l_ixl_iyl(), // LD D, L IXL IYL
-            0x56 => self.reg.d = self.read_hl_ix_iy(), // LD D, (HL IX+d IY+d)
+            0x56 => (_, self.reg.d) = self.read_hl_ix_iy(), // LD D, (HL IX+d IY+d)
             0x57 => {
                 self.reg.d = self.reg.a; // LD D, A
                 self.reg.flags.alu = false;
@@ -523,7 +529,7 @@ impl Z80 {
             0x5B => self.reg.flags.alu = false,        // LD E, E
             0x5C => self.reg.e = self.get_h_ixh_iyh(), // LD E, H IXH IYH
             0x5D => self.reg.e = self.get_l_ixl_iyl(), // LD E, L IXL IYL
-            0x5E => self.reg.e = self.read_hl_ix_iy(), // LD E, (HL IX+d IY+d)
+            0x5E => (_, self.reg.e) = self.read_hl_ix_iy(), // LD E, (HL IX+d IY+d)
             0x5F => {
                 self.reg.e = self.reg.a; // LD E, A
                 self.reg.flags.alu = false;
@@ -538,8 +544,8 @@ impl Z80 {
                 let reg = self.get_l_ixl_iyl();
                 self.set_h_ixh_iyh(reg); // LD H, L
             }
-            0x66 => self.reg.h = self.read_hl_ix_iy(), // LD H, (HL IX+d IY+d)
-            0x67 => self.set_h_ixh_iyh(self.reg.a),    // LD H, A
+            0x66 => (_, self.reg.h) = self.read_hl_ix_iy(), // LD H, (HL IX+d IY+d)
+            0x67 => self.set_h_ixh_iyh(self.reg.a),         // LD H, A
             // Destination reg = l
             0x68 => self.set_l_ixl_iyl(self.reg.b), // LD L, B
             0x69 => self.set_l_ixl_iyl(self.reg.c), // LD L, C
@@ -549,9 +555,9 @@ impl Z80 {
                 let reg = self.get_h_ixh_iyh();
                 self.set_l_ixl_iyl(reg); // LD L, H
             }
-            0x6D => self.reg.flags.alu = false,        // LD L, L
-            0x6E => self.reg.l = self.read_hl_ix_iy(), // LD L, (HL IX+d IY+d)
-            0x6F => self.set_l_ixl_iyl(self.reg.a),    // LD L, A
+            0x6D => self.reg.flags.alu = false, // LD L, L
+            0x6E => (_, self.reg.l) = self.read_hl_ix_iy(), // LD L, (HL IX+d IY+d)
+            0x6F => self.set_l_ixl_iyl(self.reg.a), // LD L, A
             // Destination reg = (HL IX+d IY+d)
             0x70 => self.write_hl_ix_iy(self.reg.b), // LD (HL), B
             0x71 => self.write_hl_ix_iy(self.reg.c), // LD (HL), C
@@ -580,7 +586,7 @@ impl Z80 {
             }
             0x7C => self.reg.a = self.get_h_ixh_iyh(), // LD A, H
             0x7D => self.reg.a = self.get_l_ixl_iyl(), // LD A, L
-            0x7E => self.reg.a = self.read_hl_ix_iy(), // LD A, (HL)
+            0x7E => (_, self.reg.a) = self.read_hl_ix_iy(), // LD A, (HL)
             0x7F => self.reg.flags.alu = false,        // LD A, A
             // LD r, n
             0x06 => {
@@ -1153,7 +1159,7 @@ impl Z80 {
                 self.add_a_r(data);
             }
             0x86 => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.add_a_r(data);
             }
             0x87 => self.add_a_r(self.reg.a),
@@ -1171,7 +1177,7 @@ impl Z80 {
                 self.adc_a_r(data);
             }
             0x8E => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.adc_a_r(data);
             }
             0x8F => self.adc_a_r(self.reg.a),
@@ -1189,7 +1195,7 @@ impl Z80 {
                 self.sub_a_r(data);
             }
             0x96 => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.sub_a_r(data);
             }
             0x97 => self.sub_a_r(self.reg.a),
@@ -1207,7 +1213,7 @@ impl Z80 {
                 self.sbc_a_r(data);
             }
             0x9E => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.sbc_a_r(data);
             }
             0x9F => self.sbc_a_r(self.reg.a),
@@ -1225,7 +1231,7 @@ impl Z80 {
                 self.bit_op_a_r(BitOp::AND, data);
             }
             0xA6 => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::AND, data);
             }
             0xA7 => self.bit_op_a_r(BitOp::AND, self.reg.a),
@@ -1243,7 +1249,7 @@ impl Z80 {
                 self.bit_op_a_r(BitOp::XOR, data);
             }
             0xAE => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::XOR, data);
             }
             0xAF => self.bit_op_a_r(BitOp::XOR, self.reg.a),
@@ -1261,7 +1267,7 @@ impl Z80 {
                 self.bit_op_a_r(BitOp::OR, data);
             }
             0xB6 => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.bit_op_a_r(BitOp::OR, data);
             }
             0xB7 => self.bit_op_a_r(BitOp::OR, self.reg.a),
@@ -1279,7 +1285,7 @@ impl Z80 {
                 self.cp_r(data);
             }
             0xBE => {
-                let data = self.read_hl_ix_iy();
+                let (_, data) = self.read_hl_ix_iy();
                 self.cp_r(data);
             }
             0xBF => self.cp_r(self.reg.a),
@@ -1341,9 +1347,9 @@ impl Z80 {
                 self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x34 => {
-                let mut n = self.read_hl_ix_iy();
+                let (addr, mut n) = self.read_hl_ix_iy();
                 n = self.inc_r(n);
-                self.write_hl_ix_iy(n);
+                self.bus.write(addr, n);
                 self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x0C => self.reg.c = self.inc_r(self.reg.c),
@@ -1365,9 +1371,9 @@ impl Z80 {
                 self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x35 => {
-                let mut n = self.read_hl_ix_iy();
+                let (addr, mut n) = self.read_hl_ix_iy();
                 n = self.dec_r(n);
-                self.write_hl_ix_iy(n);
+                self.bus.write(addr, n);
                 self.reg.flags.alu = self.reg.flags.to_byte() != 0;
             }
             0x0D => self.reg.c = self.dec_r(self.reg.c),

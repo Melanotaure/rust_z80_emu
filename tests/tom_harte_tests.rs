@@ -89,6 +89,9 @@ fn run_single_test(test: &Z80Test) {
     }
 
     let _cycles = cpu.execute();
+    if cpu.p_inst == 0xDD || cpu.p_inst == 0xFD {
+        cpu.execute();
+    }
 
     let fin = &test.final_state;
 
