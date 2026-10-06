@@ -23,7 +23,6 @@ impl Z80 {
     fn jp_nn(&mut self) {
         let nn = self.get_nn();
         self.reg.pc = nn.wrapping_sub(1);
-        self.reg.flags.alu = false;
         // PC is incremented at the end
     }
 
@@ -31,7 +30,6 @@ impl Z80 {
         self.reg.inc_pc();
         let e = self.bus.read(self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add((e as i8) as u16);
-        self.reg.flags.alu = false;
     }
 
     fn call_nn(&mut self) {
@@ -71,7 +69,6 @@ impl Z80 {
         pch = self.bus.read(self.reg.pc);
         self.reg.pc = u16::from_le_bytes([pcl, pch]);
         self.reg.dec_pc();
-        self.reg.flags.alu = false;
     }
 
     pub fn ret(&mut self) {
@@ -81,10 +78,10 @@ impl Z80 {
         self.reg.inc_sp();
         self.reg.pc = u16::from_le_bytes([pcl, pch]);
         self.reg.dec_pc();
-        self.reg.flags.alu = false;
     }
 
     fn rst(&mut self, addr: u8) {
+        self.reg.inc_pc();
         let [pcl, pch] = self.reg.pc.to_le_bytes();
         self.reg.dec_sp();
         self.bus.write(self.reg.sp, pch);
@@ -193,8 +190,8 @@ impl Z80 {
         self.reg.flags.p = (a as i8).overflowing_sub(data as i8).1;
         self.reg.flags.n = true;
         self.reg.flags.c = (a as u16) < (data as u16);
-        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
-        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.b5 = data & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
         self.reg.flags.alu = self.reg.flags.to_byte() != 0;
     }
 
@@ -819,7 +816,10 @@ impl Z80 {
 
             // Jump group
             // JP nn
-            0xC3 => self.jp_nn(),
+            0xC3 => {
+                self.jp_nn();
+                self.reg.flags.alu = false;
+            }
             // JP nz, nn
             0xC2 => {
                 if !self.reg.flags.z {
@@ -827,6 +827,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP z, nn
             0xCA => {
@@ -835,6 +836,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP nc, nn
             0xD2 => {
@@ -843,6 +845,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP c, nn
             0xDA => {
@@ -851,6 +854,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP po, nn
             0xE2 => {
@@ -859,6 +863,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP pe, nn
             0xEA => {
@@ -867,6 +872,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP p, nn
             0xF2 => {
@@ -875,6 +881,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JP m, nn
             0xFA => {
@@ -883,9 +890,13 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // JR e
-            0x18 => self.jr_e(),
+            0x18 => {
+                self.jr_e();
+                self.reg.flags.alu = false;
+            }
             // JR z, e
             0x28 => {
                 if self.reg.flags.z {
@@ -893,6 +904,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
                 self.reg.flags.alu = false;
             }
             // JR c, e
@@ -902,6 +914,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
                 self.reg.flags.alu = false;
             }
             // DJNZ e
@@ -914,6 +927,7 @@ impl Z80 {
                     self.reg.inc_pc();
                 }
                 self.reg.flags.alu = false;
+                self.reg.flags.alu = false;
             }
             // JR nz, e
             0x20 => {
@@ -922,6 +936,7 @@ impl Z80 {
                 } else {
                     self.reg.inc_pc();
                 }
+                self.reg.flags.alu = false;
                 self.reg.flags.alu = false;
             }
             // JR nc, nn
@@ -932,6 +947,7 @@ impl Z80 {
                     self.reg.inc_pc();
                 }
                 self.reg.flags.alu = false;
+                self.reg.flags.alu = false;
             }
             // JP (HL)
             0xE9 => {
@@ -941,7 +957,10 @@ impl Z80 {
 
             // Call & Return Group
             // CALL nn
-            0xCD => self.call_nn(),
+            0xCD => {
+                self.call_nn();
+                self.reg.flags.alu = false;
+            }
             // CALL nz, nn
             0xC4 => {
                 if !self.reg.flags.z {
@@ -950,6 +969,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL nc, nn
             0xD4 => {
@@ -959,6 +979,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL po, nn
             0xE4 => {
@@ -968,6 +989,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL p, nn
             0xF4 => {
@@ -977,6 +999,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL z, nn
             0xCC => {
@@ -986,6 +1009,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL c, nn
             0xDC => {
@@ -995,6 +1019,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL pe, nn
             0xEC => {
@@ -1004,6 +1029,7 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // CALL m, nn
             0xFC => {
@@ -1013,15 +1039,20 @@ impl Z80 {
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
+                self.reg.flags.alu = false;
             }
             // RET
-            0xC9 => self.ret(),
+            0xC9 => {
+                self.ret();
+                self.reg.flags.alu = false;
+            }
             // RET nz
             0xC0 => {
                 if !self.reg.flags.z {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET nc
             0xD0 => {
@@ -1029,6 +1060,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET po
             0xE0 => {
@@ -1036,6 +1068,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET p
             0xF0 => {
@@ -1043,6 +1076,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET z
             0xC8 => {
@@ -1050,6 +1084,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET c
             0xD8 => {
@@ -1057,6 +1092,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET pe
             0xE8 => {
@@ -1064,6 +1100,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RET m
             0xF8 => {
@@ -1071,6 +1108,7 @@ impl Z80 {
                     self.ret();
                     cycles = cycles.wrapping_add(6);
                 }
+                self.reg.flags.alu = false;
             }
             // RST 0x00..0x38
             0xC7 => self.rst(0x00),
@@ -1089,6 +1127,7 @@ impl Z80 {
                 let n = self.bus.read(self.reg.pc);
                 let addr = u16::from_le_bytes([n, self.reg.a]);
                 self.reg.a = read_io(addr);
+                self.reg.flags.alu = false;
             }
             // OUT (n), A
             0xD3 => {
@@ -1096,6 +1135,7 @@ impl Z80 {
                 let n = self.bus.read(self.reg.pc);
                 let addr = u16::from_le_bytes([n, self.reg.a]);
                 write_io(addr, self.reg.a);
+                self.reg.flags.alu = false;
             }
 
             // 8-bit arithmetic group
@@ -1539,8 +1579,8 @@ mod tests {
         cpu.rst(0x18);
         assert_eq!(cpu.reg.pc, 0x0017); // PC-1 for PC is incremented at each fetch instruction loop
         assert_eq!(cpu.reg.sp, 0x3000);
-        assert_eq!(cpu.bus.read(0x3001), 0x01);
-        assert_eq!(cpu.bus.read(0x3000), 0x80);
+        assert_eq!(cpu.bus.read(0x3001), 0x01); // PC+1 is saved on the stack
+        assert_eq!(cpu.bus.read(0x3000), 0x81);
         assert_eq!(cpu.reg.get_af() & 0x0F, flags);
     }
 

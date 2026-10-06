@@ -22,6 +22,7 @@ pub struct Registers {
     pub ebc: u16,
     pub ede: u16,
     pub ehl: u16,
+    pub wz: u16,
 }
 
 impl Registers {
@@ -47,6 +48,7 @@ impl Registers {
             ebc: 0xFFFF,
             ede: 0xFFFF,
             ehl: 0xFFFF,
+            wz: 0xFFFF,
         }
     }
 

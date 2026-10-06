@@ -21,7 +21,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -51,7 +53,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -82,7 +86,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -113,7 +119,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -143,7 +151,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -173,7 +183,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -203,7 +215,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x80) == 0x80;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -233,7 +247,9 @@ impl Z80 {
         self.reg.flags.p = r.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (data & 0x01) == 0x01;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         match self.p_inst {
             0xDD => self
                 .bus
@@ -262,22 +278,27 @@ impl Z80 {
                 self.bus.read(addr)
             }
             _ => {
-                match bit {
-                    5 => self.reg.flags.b5 = reg & mask == mask,
-                    3 => self.reg.flags.b3 = reg & mask == mask,
-                    _ => {}
+                if d != 1 {
+                    self.reg.flags.b5 = reg & 0b00100000 == 0b00100000;
+                    self.reg.flags.b3 = reg & 0b00001000 == 0b00001000;
+                } else {
+                    let addr = self.reg.wz;
+                    self.reg.flags.b5 = addr & 0b00100000_00000000 == 0b00100000_00000000;
+                    self.reg.flags.b3 = addr & 0b00001000_00000000 == 0b00001000_00000000;
                 }
                 reg
             }
         };
         if bit == 7 {
             self.reg.flags.s = data & mask == mask;
+        } else {
+            self.reg.flags.s = false;
         }
         self.reg.flags.z = data & mask == 0x00;
         self.reg.flags.h = true;
         self.reg.flags.p = self.reg.flags.z;
         self.reg.flags.n = false;
-        self.reg.flags.alu = false;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn res_b_r(&mut self, bit: u8, reg: u8, d: u8) -> u8 {
@@ -488,7 +509,7 @@ impl Z80 {
             0x45 => self.bit_b_r(0, self.reg.l, d),
             0x46 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(0, data, d);
+                self.bit_b_r(0, data, 1);
             }
             0x47 => self.bit_b_r(0, self.reg.a, d),
             0x48 => self.bit_b_r(1, self.reg.b, d),
@@ -499,7 +520,7 @@ impl Z80 {
             0x4D => self.bit_b_r(1, self.reg.l, d),
             0x4E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(1, data, d);
+                self.bit_b_r(1, data, 1);
             }
             0x4F => self.bit_b_r(1, self.reg.a, d),
             0x50 => self.bit_b_r(2, self.reg.b, d),
@@ -510,7 +531,7 @@ impl Z80 {
             0x55 => self.bit_b_r(2, self.reg.l, d),
             0x56 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(2, data, d);
+                self.bit_b_r(2, data, 1);
             }
             0x57 => self.bit_b_r(2, self.reg.a, d),
             0x58 => self.bit_b_r(3, self.reg.b, d),
@@ -521,7 +542,7 @@ impl Z80 {
             0x5D => self.bit_b_r(3, self.reg.l, d),
             0x5E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(3, data, d);
+                self.bit_b_r(3, data, 1);
             }
             0x5F => self.bit_b_r(3, self.reg.a, d),
             0x60 => self.bit_b_r(4, self.reg.b, d),
@@ -532,7 +553,7 @@ impl Z80 {
             0x65 => self.bit_b_r(4, self.reg.l, d),
             0x66 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(4, data, d);
+                self.bit_b_r(4, data, 1);
             }
             0x67 => self.bit_b_r(4, self.reg.a, d),
             0x68 => self.bit_b_r(5, self.reg.b, d),
@@ -543,7 +564,7 @@ impl Z80 {
             0x6D => self.bit_b_r(5, self.reg.l, d),
             0x6E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(5, data, d);
+                self.bit_b_r(5, data, 1);
             }
             0x6F => self.bit_b_r(5, self.reg.a, d),
             0x70 => self.bit_b_r(6, self.reg.b, d),
@@ -554,7 +575,7 @@ impl Z80 {
             0x75 => self.bit_b_r(6, self.reg.l, d),
             0x76 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(6, data, d);
+                self.bit_b_r(6, data, 1);
             }
             0x77 => self.bit_b_r(6, self.reg.a, d),
             0x78 => self.bit_b_r(7, self.reg.b, d),
@@ -565,7 +586,7 @@ impl Z80 {
             0x7D => self.bit_b_r(7, self.reg.l, d),
             0x7E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(7, data, d);
+                self.bit_b_r(7, data, 1);
             }
             0x7F => self.bit_b_r(7, self.reg.a, d),
             // RES b, r
