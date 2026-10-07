@@ -58,16 +58,16 @@ impl Z80 {
         // }
         // PC is first incremented by 3 to resume the flow after this 3-byte instruction
         let pc = self.reg.pc.wrapping_add(3);
-        let [mut pcl, mut pch] = pc.to_le_bytes();
+        self.reg.inc_pc();
+        let pcl = self.bus.read(self.reg.pc);
+        self.reg.inc_pc();
+        let pch = self.bus.read(self.reg.pc);
+        self.reg.pc = u16::from_le_bytes([pcl, pch]);
+        let [pcl, pch] = pc.to_le_bytes();
         self.reg.dec_sp();
         self.bus.write(self.reg.sp, pch);
         self.reg.dec_sp();
         self.bus.write(self.reg.sp, pcl);
-        self.reg.inc_pc();
-        pcl = self.bus.read(self.reg.pc);
-        self.reg.inc_pc();
-        pch = self.bus.read(self.reg.pc);
-        self.reg.pc = u16::from_le_bytes([pcl, pch]);
         self.reg.dec_pc();
     }
 
@@ -812,10 +812,9 @@ impl Z80 {
                 let data = self.get_l_ixl_iyl();
                 self.bus.write(self.reg.sp, data);
                 self.set_l_ixl_iyl(n);
-                self.reg.inc_sp();
-                let n = self.bus.read(self.reg.sp);
+                let n = self.bus.read(self.reg.sp.wrapping_add(1));
                 let data = self.get_h_ixh_iyh();
-                self.bus.write(self.reg.sp, data);
+                self.bus.write(self.reg.sp.wrapping_add(1), data);
                 self.set_h_ixh_iyh(n);
                 self.reg.flags.alu = false;
             }
@@ -1495,11 +1494,13 @@ impl Z80 {
             0xF3 => {
                 self.iff1 = false;
                 self.iff2 = false;
+                self.reg.flags.alu = false;
             }
             // EI
             0xFB => {
                 self.iff1 = true;
                 self.iff2 = true;
+                self.reg.flags.alu = false;
             }
             // Special instructions
             0xCB => cycles += self.cb_instructions(), // Bit instructions

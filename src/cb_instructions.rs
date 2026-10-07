@@ -389,7 +389,7 @@ impl Z80 {
             0x0C => self.reg.h = self.rrc_r(self.reg.h, d),
             0x0D => self.reg.l = self.rrc_r(self.reg.l, d),
             0x0E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.rrc_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -509,7 +509,15 @@ impl Z80 {
             0x45 => self.bit_b_r(0, self.reg.l, d),
             0x46 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(0, data, 1);
+                self.bit_b_r(
+                    0,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x47 => self.bit_b_r(0, self.reg.a, d),
             0x48 => self.bit_b_r(1, self.reg.b, d),
@@ -520,7 +528,15 @@ impl Z80 {
             0x4D => self.bit_b_r(1, self.reg.l, d),
             0x4E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(1, data, 1);
+                self.bit_b_r(
+                    1,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x4F => self.bit_b_r(1, self.reg.a, d),
             0x50 => self.bit_b_r(2, self.reg.b, d),
@@ -531,7 +547,15 @@ impl Z80 {
             0x55 => self.bit_b_r(2, self.reg.l, d),
             0x56 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(2, data, 1);
+                self.bit_b_r(
+                    2,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x57 => self.bit_b_r(2, self.reg.a, d),
             0x58 => self.bit_b_r(3, self.reg.b, d),
@@ -542,7 +566,15 @@ impl Z80 {
             0x5D => self.bit_b_r(3, self.reg.l, d),
             0x5E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(3, data, 1);
+                self.bit_b_r(
+                    3,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x5F => self.bit_b_r(3, self.reg.a, d),
             0x60 => self.bit_b_r(4, self.reg.b, d),
@@ -553,7 +585,15 @@ impl Z80 {
             0x65 => self.bit_b_r(4, self.reg.l, d),
             0x66 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(4, data, 1);
+                self.bit_b_r(
+                    4,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x67 => self.bit_b_r(4, self.reg.a, d),
             0x68 => self.bit_b_r(5, self.reg.b, d),
@@ -564,7 +604,15 @@ impl Z80 {
             0x6D => self.bit_b_r(5, self.reg.l, d),
             0x6E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(5, data, 1);
+                self.bit_b_r(
+                    5,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x6F => self.bit_b_r(5, self.reg.a, d),
             0x70 => self.bit_b_r(6, self.reg.b, d),
@@ -575,7 +623,15 @@ impl Z80 {
             0x75 => self.bit_b_r(6, self.reg.l, d),
             0x76 => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(6, data, 1);
+                self.bit_b_r(
+                    6,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x77 => self.bit_b_r(6, self.reg.a, d),
             0x78 => self.bit_b_r(7, self.reg.b, d),
@@ -586,7 +642,15 @@ impl Z80 {
             0x7D => self.bit_b_r(7, self.reg.l, d),
             0x7E => {
                 let data = self.bus.read(self.reg.get_hl());
-                self.bit_b_r(7, data, 1);
+                self.bit_b_r(
+                    7,
+                    data,
+                    if self.p_inst != 0xDD && self.p_inst != 0xFD {
+                        1
+                    } else {
+                        d
+                    },
+                );
             }
             0x7F => self.bit_b_r(7, self.reg.a, d),
             // RES b, r
@@ -597,7 +661,7 @@ impl Z80 {
             0x84 => self.reg.h = self.res_b_r(0, self.reg.h, d),
             0x85 => self.reg.l = self.res_b_r(0, self.reg.l, d),
             0x86 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(0, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -613,7 +677,7 @@ impl Z80 {
             0x8C => self.reg.h = self.res_b_r(1, self.reg.h, d),
             0x8D => self.reg.l = self.res_b_r(1, self.reg.l, d),
             0x8E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(1, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -629,7 +693,7 @@ impl Z80 {
             0x94 => self.reg.h = self.res_b_r(2, self.reg.h, d),
             0x95 => self.reg.l = self.res_b_r(2, self.reg.l, d),
             0x96 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(2, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -645,7 +709,7 @@ impl Z80 {
             0x9C => self.reg.h = self.res_b_r(3, self.reg.h, d),
             0x9D => self.reg.l = self.res_b_r(3, self.reg.l, d),
             0x9E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(3, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -661,7 +725,7 @@ impl Z80 {
             0xA4 => self.reg.h = self.res_b_r(4, self.reg.h, d),
             0xA5 => self.reg.l = self.res_b_r(4, self.reg.l, d),
             0xA6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(4, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -677,7 +741,7 @@ impl Z80 {
             0xAC => self.reg.h = self.res_b_r(5, self.reg.h, d),
             0xAD => self.reg.l = self.res_b_r(5, self.reg.l, d),
             0xAE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(5, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -693,7 +757,7 @@ impl Z80 {
             0xB4 => self.reg.h = self.res_b_r(6, self.reg.h, d),
             0xB5 => self.reg.l = self.res_b_r(6, self.reg.l, d),
             0xB6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(6, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -709,7 +773,7 @@ impl Z80 {
             0xBC => self.reg.h = self.res_b_r(7, self.reg.h, d),
             0xBD => self.reg.l = self.res_b_r(7, self.reg.l, d),
             0xBE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.res_b_r(7, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -726,7 +790,7 @@ impl Z80 {
             0xC4 => self.reg.h = self.set_b_r(0, self.reg.h, d),
             0xC5 => self.reg.l = self.set_b_r(0, self.reg.l, d),
             0xC6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(0, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -742,7 +806,7 @@ impl Z80 {
             0xCC => self.reg.h = self.set_b_r(1, self.reg.h, d),
             0xCD => self.reg.l = self.set_b_r(1, self.reg.l, d),
             0xCE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(1, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -758,7 +822,7 @@ impl Z80 {
             0xD4 => self.reg.h = self.set_b_r(2, self.reg.h, d),
             0xD5 => self.reg.l = self.set_b_r(2, self.reg.l, d),
             0xD6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(2, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -774,7 +838,7 @@ impl Z80 {
             0xDC => self.reg.h = self.set_b_r(3, self.reg.h, d),
             0xDD => self.reg.l = self.set_b_r(3, self.reg.l, d),
             0xDE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(3, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -790,7 +854,7 @@ impl Z80 {
             0xE4 => self.reg.h = self.set_b_r(4, self.reg.h, d),
             0xE5 => self.reg.l = self.set_b_r(4, self.reg.l, d),
             0xE6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(4, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -806,7 +870,7 @@ impl Z80 {
             0xEC => self.reg.h = self.set_b_r(5, self.reg.h, d),
             0xED => self.reg.l = self.set_b_r(5, self.reg.l, d),
             0xEE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(5, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -822,7 +886,7 @@ impl Z80 {
             0xF4 => self.reg.h = self.set_b_r(6, self.reg.h, d),
             0xF5 => self.reg.l = self.set_b_r(6, self.reg.l, d),
             0xF6 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(6, data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -838,7 +902,7 @@ impl Z80 {
             0xFC => self.reg.h = self.set_b_r(7, self.reg.h, d),
             0xFD => self.reg.l = self.set_b_r(7, self.reg.l, d),
             0xFE => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.set_b_r(7, data, d);
                     self.bus.write(self.reg.get_hl(), data);

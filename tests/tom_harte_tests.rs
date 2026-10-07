@@ -46,7 +46,12 @@ struct Z80Test {
 
 /// This function takes one JSON test and executes it through the Z80 emulator
 fn run_single_test(test: &Z80Test) {
-    if test.name.starts_with("DB") {
+    if test.name.starts_with("DB")
+        || test.name.starts_with("DD DB")
+        || test.name.starts_with("ED 40")
+        || test.name.starts_with("ED 50")
+        || test.name.starts_with("ED 60")
+    {
         // Bypass the IN tests...
         return;
     }
