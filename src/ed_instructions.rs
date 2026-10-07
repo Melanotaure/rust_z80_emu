@@ -10,7 +10,7 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = data.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         data
     }
 
@@ -27,10 +27,12 @@ impl Z80 {
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
-        self.reg.flags.p = hl.overflowing_sub(reg.wrapping_add(c)).1;
+        self.reg.flags.p = ((hl ^ reg) & (hl ^ r) & 0x8000) != 0;
         self.reg.flags.n = true;
         self.reg.flags.c = (hl as u32) < (reg as u32 + c as u32);
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000_00000000 != 0;
+        self.reg.flags.b3 = r & 0b00001000_00000000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         r
     }
 
@@ -41,10 +43,12 @@ impl Z80 {
         self.reg.flags.s = r & 0x8000 == 0x8000;
         self.reg.flags.z = r == 0x0000;
         self.reg.flags.h = (hl ^ reg ^ r) & 0x1000 != 0;
-        self.reg.flags.p = hl.overflowing_add(reg.wrapping_add(c)).1;
+        self.reg.flags.p = ((hl ^ r) & (reg ^ r) & 0x8000) != 0;
         self.reg.flags.n = false;
         self.reg.flags.c = (hl as u32) + (reg as u32 + c as u32) > 0x0000FFFF;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000_00000000 != 0;
+        self.reg.flags.b3 = r & 0b00001000_00000000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         r
     }
 
@@ -58,7 +62,9 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.c = a != 0;
         self.reg.a = r;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
+        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn ldi(&mut self) {
@@ -70,12 +76,13 @@ impl Z80 {
         self.reg.set_de(d.wrapping_add(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
-        self.reg.flags.b5 = data & 0b00100000 == 0b00100000;
-        self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
+        let n = data.wrapping_add(self.reg.a);
+        self.reg.flags.b5 = n & 0b00000010 != 0;
+        self.reg.flags.b3 = n & 0b00001000 != 0;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn ldd(&mut self) {
@@ -87,12 +94,13 @@ impl Z80 {
         self.reg.set_de(d.wrapping_sub(1));
         let bc = self.reg.get_bc();
         self.reg.set_bc(bc.wrapping_sub(1));
-        self.reg.flags.b5 = data & 0b00100000 == 0b00100000;
-        self.reg.flags.b3 = data & 0b00001000 == 0b00001000;
+        let n = data.wrapping_add(self.reg.a);
+        self.reg.flags.b5 = n & 0b00000010 != 0;
+        self.reg.flags.b3 = n & 0b00001000 != 0;
         self.reg.flags.h = false;
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn cpi(&mut self) {
@@ -109,9 +117,9 @@ impl Z80 {
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
-        self.reg.flags.b5 = n & 0b00100000 == 0b00100000;
-        self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = n & 0b00000010 != 0;
+        self.reg.flags.b3 = n & 0b00001000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn cpd(&mut self) {
@@ -128,9 +136,9 @@ impl Z80 {
         self.reg.flags.p = self.reg.get_bc() != 0;
         self.reg.flags.n = true;
         let n = a.wrapping_sub(data).wrapping_sub(self.reg.flags.h as u8);
-        self.reg.flags.b5 = n & 0b00000010 == 0b00000010;
-        self.reg.flags.b3 = n & 0b00001000 == 0b00001000;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = n & 0b00000010 != 0;
+        self.reg.flags.b3 = n & 0b00001000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn ini(&mut self) {
@@ -145,7 +153,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn ind(&mut self) {
@@ -160,7 +168,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn outi(&mut self) {
@@ -175,7 +183,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn outd(&mut self) {
@@ -190,7 +198,7 @@ impl Z80 {
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
         self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn ld_a_ri(&mut self, reg: u8) {
@@ -200,7 +208,9 @@ impl Z80 {
         self.reg.flags.h = false;
         self.reg.flags.p = self.iff2;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
+        self.reg.flags.b5 = reg & 0b00100000 != 0;
+        self.reg.flags.b3 = reg & 0b00001000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
     fn rld(&mut self) {
@@ -209,13 +219,15 @@ impl Z80 {
         let tmp = a & 0x0F;
         let a = (a & 0xF0) | (n >> 4);
         let n = (n << 4) | tmp;
+        self.reg.a = a;
         self.reg.flags.s = a & 0x80 == 0x80;
         self.reg.flags.z = a == 0;
         self.reg.flags.h = false;
         self.reg.flags.p = a.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
-        self.reg.a = a;
+        self.reg.flags.b5 = a & 0b00100000 != 0;
+        self.reg.flags.b3 = a & 0b00001000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         self.bus.write(self.reg.get_hl(), n);
     }
 
@@ -225,17 +237,20 @@ impl Z80 {
         let tmp = a << 4;
         let a = (a & 0xF0) | (n & 0x0F);
         let n = (n >> 4) | tmp;
+        self.reg.a = a;
         self.reg.flags.s = a & 0x80 == 0x80;
         self.reg.flags.z = a == 0;
         self.reg.flags.h = false;
         self.reg.flags.p = a.count_ones() & 0x01 == 0;
         self.reg.flags.n = false;
-        self.reg.flags.alu = self.reg.get_af() & 0x0F != 0;
-        self.reg.a = a;
+        self.reg.flags.b5 = a & 0b00100000 != 0;
+        self.reg.flags.b3 = a & 0b00001000 != 0;
+        self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
         self.bus.write(self.reg.get_hl(), n);
     }
 
     pub fn ed_instructions(&mut self) -> u8 {
+        self.reg.inc_r();
         self.reg.inc_pc();
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
@@ -339,14 +354,30 @@ impl Z80 {
             }
             0x44 | 0x4C | 0x54 | 0x5C | 0x64 | 0x6C | 0x74 | 0x7C => self.neg(),
             // Interrupt mode
-            0x46 | 0x4E | 0x66 | 0x6E => self.im = InterruptMode::IM_0,
-            0x56 | 0x76 => self.im = InterruptMode::IM_1,
-            0x5E | 0x7E => self.im = InterruptMode::IM_2,
+            0x46 | 0x4E | 0x66 | 0x6E => {
+                self.im = InterruptMode::IM_0;
+                self.reg.flags.alu = false;
+            }
+
+            0x56 | 0x76 => {
+                self.im = InterruptMode::IM_1;
+                self.reg.flags.alu = false;
+            }
+            0x5E | 0x7E => {
+                self.im = InterruptMode::IM_2;
+                self.reg.flags.alu = false;
+            }
             // LD I,A ; LD A,I ; LD R,A ; LD A,R
-            0x47 => self.reg.i = self.reg.a,
+            0x47 => {
+                self.reg.i = self.reg.a;
+                self.reg.flags.alu = false;
+            }
             0x57 => self.ld_a_ri(self.reg.i),
-            0x4F => self.reg.r = self.reg.a,
-            0x5F => self.ld_a_ri(self.reg.r),
+            0x4F => {
+                self.reg.r = self.reg.a;
+                self.reg.flags.alu = false;
+            }
+            0x5F => self.ld_a_ri(self.reg.r & 0x7F),
             // LDI ; LDIR
             0xA0 => self.ldi(),
             0xB0 => {
@@ -423,11 +454,13 @@ impl Z80 {
             0x45 | 0x55 | 0x5D | 0x65 | 0x6D | 0x75 | 0x7D => {
                 self.iff1 = self.iff2;
                 self.ret();
+                self.reg.flags.alu = false;
             }
             // RETI
             0x4D => {
                 self.iff1 = self.iff2;
                 self.ret();
+                self.reg.flags.alu = false;
             }
 
             // RRD and RLD
@@ -435,7 +468,7 @@ impl Z80 {
             0x6F => self.rld(),
 
             // NOP
-            0x77 | 0x7F => {}
+            0x77 | 0x7F => self.reg.flags.alu = false,
 
             _ => {}
         }
@@ -493,7 +526,7 @@ mod tests {
         assert_eq!(cpu.reg.get_hl(), 0xB4B4);
         assert_eq!(cpu.reg.flags.c, false); // No carry after op
         assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
+        assert_eq!(cpu.reg.flags.p, true); // No overflow
         assert_eq!(cpu.reg.flags.h, true); // Half-carry
         assert_eq!(cpu.reg.flags.z, false); // Not zero
         assert_eq!(cpu.reg.flags.s, true); // Negative
@@ -510,7 +543,7 @@ mod tests {
         assert_eq!(cpu.reg.get_hl(), 0x0000);
         assert_eq!(cpu.reg.flags.c, true); // Carry after op
         assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, true); // Overflow
+        assert_eq!(cpu.reg.flags.p, false); // Overflow
         assert_eq!(cpu.reg.flags.h, true); // Half-carry
         assert_eq!(cpu.reg.flags.z, true); // Zero
         assert_eq!(cpu.reg.flags.s, false); // Not negative
@@ -579,7 +612,7 @@ mod tests {
         assert_eq!(cpu.reg.get_hl(), 0xFFFF);
         assert_eq!(cpu.reg.flags.c, true); // Carry after op
         assert_eq!(cpu.reg.flags.n, true); // Sub op
-        assert_eq!(cpu.reg.flags.p, true); // Overflow
+        assert_eq!(cpu.reg.flags.p, false); // Overflow
         assert_eq!(cpu.reg.flags.h, true); // Half-carry
         assert_eq!(cpu.reg.flags.z, false); // Not zero
         assert_eq!(cpu.reg.flags.s, true); // Negative

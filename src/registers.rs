@@ -127,7 +127,7 @@ impl Registers {
     }
 
     pub fn inc_r(&mut self) {
-        self.r = self.r & 0x80 + self.r.wrapping_add(1) & 0x7F;
+        self.r = self.r.wrapping_add(1);
     }
 
     pub fn reset(&mut self) {

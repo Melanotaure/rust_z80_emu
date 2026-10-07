@@ -1505,7 +1505,9 @@ impl Z80 {
             // Special instructions
             0xCB => cycles += self.cb_instructions(), // Bit instructions
             0xED => cycles += self.ed_instructions(), // Misc. instructions
-            _ => {} // For 0xDD and 0xFD instructions do something depending on the next opcode
+            _ => {
+                self.reg.inc_r();
+            } // For 0xDD and 0xFD instructions do something depending on the next opcode
         }
         if self.p_inst == 0xDD || self.p_inst == 0xFD {
             cycles += CYCLES_DD_FD[instr as usize];

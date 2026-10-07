@@ -359,6 +359,7 @@ impl Z80 {
         } else {
             0_u8
         };
+        self.reg.inc_r();
         self.reg.inc_pc();
         let opcode = self.bus.read(self.reg.pc);
         let mut cycles = CYCLES_CB[opcode as usize];

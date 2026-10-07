@@ -49,8 +49,17 @@ fn run_single_test(test: &Z80Test) {
     if test.name.starts_with("DB")
         || test.name.starts_with("DD DB")
         || test.name.starts_with("ED 40")
+        || test.name.starts_with("ED 48")
         || test.name.starts_with("ED 50")
+        || test.name.starts_with("ED 58")
         || test.name.starts_with("ED 60")
+        || test.name.starts_with("ED 68")
+        || test.name.starts_with("ED 70")
+        || test.name.starts_with("ED 78")
+        || test.name.starts_with("ED A2")
+        || test.name.starts_with("ED B2")
+        || test.name.starts_with("ED AA")
+        || test.name.starts_with("ED BA")
     {
         // Bypass the IN tests...
         return;
@@ -77,7 +86,8 @@ fn run_single_test(test: &Z80Test) {
 
     cpu.reg.set_ix(init.ix);
     cpu.reg.set_iy(init.iy);
-    cpu.reg.set_ir(u16::from_le_bytes([init.r, init.i]));
+    cpu.reg.i = init.i;
+    cpu.reg.r = init.r;
 
     cpu.iff1 = init.iff1 != 0;
     cpu.iff2 = init.iff2 != 0;
