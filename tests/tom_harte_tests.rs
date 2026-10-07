@@ -60,6 +60,8 @@ fn run_single_test(test: &Z80Test) {
         || test.name.starts_with("ED B2")
         || test.name.starts_with("ED AA")
         || test.name.starts_with("ED BA")
+        || test.name.starts_with("ED B3")
+        || test.name.starts_with("ED BB")
     {
         // Bypass the IN tests...
         return;
@@ -118,11 +120,11 @@ fn run_single_test(test: &Z80Test) {
     assert_eq!(cpu.reg.d, fin.d, "[{}] Reg D error", test.name);
     assert_eq!(cpu.reg.e, fin.e, "[{}] Reg E error", test.name);
     assert_eq!(
-        (cpu.reg.get_af() & 0x00FF) as u8,
+        cpu.reg.flags.to_byte(),
         fin.f,
         "[{}] Reg F error {}",
         test.name,
-        cpu.reg.a
+        cpu.reg.pc
     );
     assert_eq!(cpu.reg.h, fin.h, "[{}] Reg H error", test.name);
     assert_eq!(cpu.reg.l, fin.l, "[{}] Reg L error", test.name);

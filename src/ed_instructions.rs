@@ -62,8 +62,8 @@ impl Z80 {
         self.reg.flags.n = true;
         self.reg.flags.c = a != 0;
         self.reg.a = r;
-        self.reg.flags.b5 = r & 0b00100000 == 0b00100000;
-        self.reg.flags.b3 = r & 0b00001000 == 0b00001000;
+        self.reg.flags.b5 = r & 0b00100000 != 0;
+        self.reg.flags.b3 = r & 0b00001000 != 0;
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
@@ -197,7 +197,7 @@ impl Z80 {
         let k = data as u16 + self.reg.l as u16;
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
-        self.reg.flags.p = ((k & 0x0007) as u8 ^ self.reg.b).count_ones() & 0x01 == 0;
+        self.reg.flags.p = ((k & 0x0007) ^ self.reg.b as u16).count_ones() % 2 == 0;
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
@@ -383,7 +383,10 @@ impl Z80 {
             0xB0 => {
                 self.ldi();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
@@ -392,7 +395,10 @@ impl Z80 {
             0xB8 => {
                 self.ldd();
                 if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
@@ -400,8 +406,11 @@ impl Z80 {
             0xA1 => self.cpi(),
             0xB1 => {
                 self.cpi();
-                if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                if self.reg.flags.p && !self.reg.flags.z {
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
@@ -409,8 +418,11 @@ impl Z80 {
             0xA9 => self.cpd(),
             0xB9 => {
                 self.cpd();
-                if self.reg.flags.p {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                if self.reg.flags.p && !self.reg.flags.z {
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
@@ -437,7 +449,10 @@ impl Z80 {
             0xB3 => {
                 self.outi();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
@@ -446,7 +461,10 @@ impl Z80 {
             0xBB => {
                 self.outd();
                 if !self.reg.flags.z {
-                    self.reg.pc = self.reg.pc.wrapping_sub(2);
+                    self.reg.dec_pc();
+                    self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
+                    self.reg.flags.b3 = self.reg.pc & 0b00001000_00000000 != 0;
+                    self.reg.dec_pc();
                     cycles += 5;
                 }
             }
