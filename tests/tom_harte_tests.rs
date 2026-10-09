@@ -48,6 +48,7 @@ struct Z80Test {
 fn run_single_test(test: &Z80Test) {
     if test.name.starts_with("DB")
         || test.name.starts_with("DD DB")
+        || test.name.starts_with("FD DB")
         || test.name.starts_with("ED 40")
         || test.name.starts_with("ED 48")
         || test.name.starts_with("ED 50")

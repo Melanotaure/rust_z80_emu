@@ -407,7 +407,7 @@ impl Z80 {
             0x14 => self.reg.h = self.rl_r(self.reg.h, d),
             0x15 => self.reg.l = self.rl_r(self.reg.l, d),
             0x16 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.rl_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -424,7 +424,7 @@ impl Z80 {
             0x1C => self.reg.h = self.rr_r(self.reg.h, d),
             0x1D => self.reg.l = self.rr_r(self.reg.l, d),
             0x1E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.rr_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -441,7 +441,7 @@ impl Z80 {
             0x24 => self.reg.h = self.sla_r(self.reg.h, d),
             0x25 => self.reg.l = self.sla_r(self.reg.l, d),
             0x26 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.sla_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -458,7 +458,7 @@ impl Z80 {
             0x2C => self.reg.h = self.sra_r(self.reg.h, d),
             0x2D => self.reg.l = self.sra_r(self.reg.l, d),
             0x2E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.sra_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -475,7 +475,7 @@ impl Z80 {
             0x34 => self.reg.h = self.sll_r(self.reg.h, d),
             0x35 => self.reg.l = self.sll_r(self.reg.l, d),
             0x36 => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.sll_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
@@ -492,7 +492,7 @@ impl Z80 {
             0x3C => self.reg.h = self.srl_r(self.reg.h, d),
             0x3D => self.reg.l = self.srl_r(self.reg.l, d),
             0x3E => {
-                if self.p_inst != 0xDD || self.p_inst != 0xFD {
+                if self.p_inst != 0xDD && self.p_inst != 0xFD {
                     let mut data = self.bus.read(self.reg.get_hl());
                     data = self.srl_r(data, d);
                     self.bus.write(self.reg.get_hl(), data);
