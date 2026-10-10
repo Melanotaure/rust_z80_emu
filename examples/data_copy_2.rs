@@ -1,21 +1,61 @@
+use rust_z80_emu::bus::SystemBus;
 use rust_z80_emu::z80::*;
+
+const MEMORY_SIZE: usize = 65_536;
+
+struct TestBus {
+    ram: Box<[u8; MEMORY_SIZE]>,
+    io_port: Box<[u8; MEMORY_SIZE]>,
+}
+
+impl TestBus {
+    fn new() -> Self {
+        Self {
+            ram: Box::new([0; MEMORY_SIZE]),
+            io_port: Box::new([0; MEMORY_SIZE]),
+        }
+    }
+
+    fn load_code(&mut self, start_addr: u16, code: &[u8]) {
+        for (i, &byte) in code.iter().enumerate() {
+            self.ram[(start_addr as usize) + i] = byte;
+        }
+    }
+}
+
+impl SystemBus for TestBus {
+    fn read_memory(&mut self, addr: u16) -> u8 {
+        self.ram[addr as usize]
+    }
+
+    fn write_memory(&mut self, addr: u16, data: u8) {
+        self.ram[addr as usize] = data;
+    }
+
+    fn read_io(&mut self, port: u16) -> u8 {
+        self.io_port[port as usize]
+    }
+
+    fn write_io(&mut self, port: u16, data: u8) {
+        self.io_port[port as usize] = data;
+    }
+}
 
 fn main() {
     let mut z80 = Z80::new();
+    let mut bus = TestBus::new();
 
     let code = std::fs::read("resources/data_copy_2.bin").unwrap();
-    for (addr, opcode) in code.iter().enumerate() {
-        z80.bus.write(addr as u16, *opcode);
-    }
+    bus.load_code(0, &code);
 
     let mut cycles: usize = 0;
     println!("Memory contents at start:");
-    z80.memory_dump(0, 50);
+    z80.memory_dump(0, 50, &mut bus);
     println!("");
     z80.display_regs();
     println!("");
     loop {
-        cycles += z80.execute() as usize;
+        cycles += z80.execute(&mut bus) as usize;
         z80.display_regs();
         println!("");
         if z80.reg.pc == 0x0013 {
@@ -25,5 +65,5 @@ fn main() {
     println!("cycles: {}", cycles);
 
     println!("Memory contents at stop:");
-    z80.memory_dump(0, 50);
+    z80.memory_dump(0, 50, &mut bus);
 }

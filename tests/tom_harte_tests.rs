@@ -1,7 +1,48 @@
+use rust_z80_emu::bus::SystemBus;
 use rust_z80_emu::z80::{InterruptMode, Z80};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
+
+const MEMORY_SIZE: usize = 65_536;
+
+struct TestBus {
+    ram: Box<[u8; MEMORY_SIZE]>,
+    io_port: Box<[u8; MEMORY_SIZE]>,
+}
+
+impl TestBus {
+    fn new() -> Self {
+        Self {
+            ram: Box::new([0; MEMORY_SIZE]),
+            io_port: Box::new([0; MEMORY_SIZE]),
+        }
+    }
+
+    fn load_code(&mut self, start_addr: u16, code: &[u8]) {
+        for (i, &byte) in code.iter().enumerate() {
+            self.ram[(start_addr as usize) + i] = byte;
+        }
+    }
+}
+
+impl SystemBus for TestBus {
+    fn read_memory(&mut self, addr: u16) -> u8 {
+        self.ram[addr as usize]
+    }
+
+    fn write_memory(&mut self, addr: u16, data: u8) {
+        self.ram[addr as usize] = data;
+    }
+
+    fn read_io(&mut self, port: u16) -> u8 {
+        self.io_port[port as usize]
+    }
+
+    fn write_io(&mut self, port: u16, data: u8) {
+        self.io_port[port as usize] = data;
+    }
+}
 
 // JSon structure
 #[derive(Deserialize, Debug)]
@@ -68,6 +109,7 @@ fn run_single_test(test: &Z80Test) {
         return;
     }
     let mut cpu = Z80::new();
+    let mut bus = TestBus::new();
 
     let init = &test.initial;
     cpu.reg.pc = init.pc;
@@ -103,12 +145,12 @@ fn run_single_test(test: &Z80Test) {
     cpu.reg.flags.alu = init.q != 0;
 
     for &(addr, val) in &init.ram {
-        cpu.bus.write(addr, val);
+        bus.write_memory(addr, val);
     }
 
-    let _cycles = cpu.execute();
+    let _cycles = cpu.execute(&mut bus);
     if cpu.p_inst == 0xDD || cpu.p_inst == 0xFD {
-        cpu.execute();
+        cpu.execute(&mut bus);
     }
 
     let fin = &test.final_state;
@@ -138,7 +180,7 @@ fn run_single_test(test: &Z80Test) {
     );
 
     for &(addr, val) in &fin.ram {
-        let actual_val = cpu.bus.read(addr);
+        let actual_val = bus.read_memory(addr);
         assert_eq!(actual_val, val, "[{}] RAM error @{:04X}", test.name, addr);
     }
 }

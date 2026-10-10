@@ -1,33 +1,9 @@
-const MEMORY_SIZE: usize = 65_536;
+pub trait SystemBus {
+    fn read_memory(&mut self, addr: u16) -> u8;
 
-pub struct Bus {
-    memory: [u8; MEMORY_SIZE],
-}
+    fn write_memory(&mut self, addr: u16, data: u8);
 
-impl Bus {
-    pub fn new() -> Self {
-        Self {
-            memory: [0_u8; MEMORY_SIZE],
-        }
-    }
+    fn read_io(&mut self, port: u16) -> u8;
 
-    pub fn read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
-    }
-
-    pub fn write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
-    }
-
-    pub fn reset(&mut self) {
-        self.memory.fill(0_u8);
-    }
-}
-
-pub fn read_io(addr: u16) -> u8 {
-    addr as u8
-}
-
-pub fn write_io(addr: u16, data: u8) {
-    let _d = addr + data as u16;
+    fn write_io(&mut self, port: u16, data: u8);
 }

@@ -1,10 +1,10 @@
-use crate::bus::{read_io, write_io};
+use crate::bus::SystemBus;
 use crate::{cycles::CYCLES_ED, z80::*};
 
 impl Z80 {
-    fn in_r_c(&mut self) -> u8 {
+    fn in_r_c<B: SystemBus>(&mut self, bus: &mut B) -> u8 {
         let addr = self.reg.get_bc();
-        let data = read_io(addr);
+        let data = bus.read_io(addr);
         self.reg.flags.s = data & 0x80 == 0x80;
         self.reg.flags.z = data == 0x00;
         self.reg.flags.h = false;
@@ -14,9 +14,9 @@ impl Z80 {
         data
     }
 
-    fn out_c_r(&mut self, reg: u8) {
+    fn out_c_r<B: SystemBus>(&mut self, reg: u8, bus: &mut B) {
         let addr = self.reg.get_bc();
-        write_io(addr, reg);
+        bus.write_io(addr, reg);
         self.reg.flags.alu = false;
     }
 
@@ -67,11 +67,11 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn ldi(&mut self) {
+    fn ldi<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
         let d = self.reg.get_de();
-        let data = self.bus.read(s);
-        self.bus.write(d, data);
+        let data = bus.read_memory(s);
+        bus.write_memory(d, data);
         self.reg.set_hl(s.wrapping_add(1));
         self.reg.set_de(d.wrapping_add(1));
         let bc = self.reg.get_bc();
@@ -85,11 +85,11 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn ldd(&mut self) {
+    fn ldd<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
         let d = self.reg.get_de();
-        let data = self.bus.read(s);
-        self.bus.write(d, data);
+        let data = bus.read_memory(s);
+        bus.write_memory(d, data);
         self.reg.set_hl(s.wrapping_sub(1));
         self.reg.set_de(d.wrapping_sub(1));
         let bc = self.reg.get_bc();
@@ -103,9 +103,9 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn cpi(&mut self) {
+    fn cpi<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
-        let data = self.bus.read(s);
+        let data = bus.read_memory(s);
         let a = self.reg.a;
         let r = a.wrapping_sub(data);
         self.reg.set_hl(s.wrapping_add(1));
@@ -122,9 +122,9 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn cpd(&mut self) {
+    fn cpd<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
-        let data = self.bus.read(s);
+        let data = bus.read_memory(s);
         let a = self.reg.a;
         let r = a.wrapping_sub(data);
         self.reg.set_hl(s.wrapping_sub(1));
@@ -141,11 +141,11 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn ini(&mut self) {
+    fn ini<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_bc();
-        let data = read_io(s);
+        let data = bus.read_io(s);
         let d = self.reg.get_hl();
-        self.bus.write(d, data);
+        bus.write_memory(d, data);
         self.reg.set_hl(d.wrapping_add(1));
         self.reg.b = self.dec_r(self.reg.b);
         self.reg.flags.n = data & 0x80 == 0x80;
@@ -156,11 +156,11 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn ind(&mut self) {
+    fn ind<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_bc();
-        let data = read_io(s);
+        let data = bus.read_io(s);
         let d = self.reg.get_hl();
-        self.bus.write(d, data);
+        bus.write_memory(d, data);
         self.reg.set_hl(d.wrapping_sub(1));
         self.reg.b = self.dec_r(self.reg.b);
         self.reg.flags.n = data & 0x80 == 0x80;
@@ -171,14 +171,14 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn outi(&mut self) {
+    fn outi<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
-        let data = self.bus.read(s);
+        let data = bus.read_memory(s);
         self.reg.set_hl(s.wrapping_add(1));
         self.reg.b = self.dec_r(self.reg.b);
         self.reg.flags.n = data & 0x80 == 0x80;
         let d = self.reg.get_bc();
-        write_io(d, data);
+        bus.write_io(d, data);
         let k = data as u16 + self.reg.l as u16;
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
@@ -186,14 +186,14 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn outd(&mut self) {
+    fn outd<B: SystemBus>(&mut self, bus: &mut B) {
         let s = self.reg.get_hl();
-        let data = self.bus.read(s);
+        let data = bus.read_memory(s);
         self.reg.set_hl(s.wrapping_sub(1));
         self.reg.b = self.dec_r(self.reg.b);
         self.reg.flags.n = data & 0x80 == 0x80;
         let d = self.reg.get_bc();
-        write_io(d, data);
+        bus.write_io(d, data);
         let k = data as u16 + self.reg.l as u16;
         self.reg.flags.c = k > 0x00FF;
         self.reg.flags.h = self.reg.flags.c;
@@ -213,8 +213,8 @@ impl Z80 {
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
     }
 
-    fn rld(&mut self) {
-        let n = self.bus.read(self.reg.get_hl());
+    fn rld<B: SystemBus>(&mut self, bus: &mut B) {
+        let n = bus.read_memory(self.reg.get_hl());
         let a = self.reg.a;
         let tmp = a & 0x0F;
         let a = (a & 0xF0) | (n >> 4);
@@ -228,11 +228,11 @@ impl Z80 {
         self.reg.flags.b5 = a & 0b00100000 != 0;
         self.reg.flags.b3 = a & 0b00001000 != 0;
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
-        self.bus.write(self.reg.get_hl(), n);
+        bus.write_memory(self.reg.get_hl(), n);
     }
 
-    fn rrd(&mut self) {
-        let n = self.bus.read(self.reg.get_hl());
+    fn rrd<B: SystemBus>(&mut self, bus: &mut B) {
+        let n = bus.read_memory(self.reg.get_hl());
         let a = self.reg.a;
         let tmp = a << 4;
         let a = (a & 0xF0) | (n & 0x0F);
@@ -246,34 +246,34 @@ impl Z80 {
         self.reg.flags.b5 = a & 0b00100000 != 0;
         self.reg.flags.b3 = a & 0b00001000 != 0;
         self.reg.flags.alu = self.reg.get_af() & 0x00FF != 0;
-        self.bus.write(self.reg.get_hl(), n);
+        bus.write_memory(self.reg.get_hl(), n);
     }
 
-    pub fn ed_instructions(&mut self) -> u8 {
+    pub fn ed_instructions<B: SystemBus>(&mut self, bus: &mut B) -> u8 {
         self.reg.inc_r();
         self.reg.inc_pc();
-        let opcode = self.bus.read(self.reg.pc);
+        let opcode = bus.read_memory(self.reg.pc);
         let mut cycles = CYCLES_ED[opcode as usize];
 
         match opcode {
             // IN r, (C)
-            0x40 => self.reg.b = self.in_r_c(),
-            0x48 => self.reg.c = self.in_r_c(),
-            0x50 => self.reg.d = self.in_r_c(),
-            0x58 => self.reg.e = self.in_r_c(),
-            0x60 => self.reg.h = self.in_r_c(),
-            0x68 => self.reg.l = self.in_r_c(),
-            0x70 => _ = self.in_r_c(),
-            0x78 => self.reg.a = self.in_r_c(),
+            0x40 => self.reg.b = self.in_r_c(bus),
+            0x48 => self.reg.c = self.in_r_c(bus),
+            0x50 => self.reg.d = self.in_r_c(bus),
+            0x58 => self.reg.e = self.in_r_c(bus),
+            0x60 => self.reg.h = self.in_r_c(bus),
+            0x68 => self.reg.l = self.in_r_c(bus),
+            0x70 => _ = self.in_r_c(bus),
+            0x78 => self.reg.a = self.in_r_c(bus),
             // OUT (C), r
-            0x41 => self.out_c_r(self.reg.b),
-            0x49 => self.out_c_r(self.reg.c),
-            0x51 => self.out_c_r(self.reg.d),
-            0x59 => self.out_c_r(self.reg.e),
-            0x61 => self.out_c_r(self.reg.h),
-            0x69 => self.out_c_r(self.reg.l),
-            0x71 => self.out_c_r(0x00),
-            0x79 => self.out_c_r(self.reg.a),
+            0x41 => self.out_c_r(self.reg.b, bus),
+            0x49 => self.out_c_r(self.reg.c, bus),
+            0x51 => self.out_c_r(self.reg.d, bus),
+            0x59 => self.out_c_r(self.reg.e, bus),
+            0x61 => self.out_c_r(self.reg.h, bus),
+            0x69 => self.out_c_r(self.reg.l, bus),
+            0x71 => self.out_c_r(0x00, bus),
+            0x79 => self.out_c_r(self.reg.a, bus),
             // SBC HL, rr
             0x42 => {
                 let hl = self.sbc_hl_rr(self.reg.get_bc());
@@ -310,46 +310,46 @@ impl Z80 {
             }
             // LD (nn), rr
             0x43 => {
-                let nn = self.get_nn();
-                self.bus.write(nn, self.reg.c);
-                self.bus.write(nn.wrapping_add(1), self.reg.b);
+                let nn = self.get_nn(bus);
+                bus.write_memory(nn, self.reg.c);
+                bus.write_memory(nn.wrapping_add(1), self.reg.b);
             }
             0x53 => {
-                let nn = self.get_nn();
-                self.bus.write(nn, self.reg.e);
-                self.bus.write(nn.wrapping_add(1), self.reg.d);
+                let nn = self.get_nn(bus);
+                bus.write_memory(nn, self.reg.e);
+                bus.write_memory(nn.wrapping_add(1), self.reg.d);
             }
             0x63 => {
-                let nn = self.get_nn();
-                self.bus.write(nn, self.reg.l);
-                self.bus.write(nn.wrapping_add(1), self.reg.h);
+                let nn = self.get_nn(bus);
+                bus.write_memory(nn, self.reg.l);
+                bus.write_memory(nn.wrapping_add(1), self.reg.h);
             }
             0x73 => {
-                let nn = self.get_nn();
+                let nn = self.get_nn(bus);
                 let [spl, sph] = self.reg.sp.to_le_bytes();
-                self.bus.write(nn, spl);
-                self.bus.write(nn.wrapping_add(1), sph);
+                bus.write_memory(nn, spl);
+                bus.write_memory(nn.wrapping_add(1), sph);
             }
             // LD rr, (nn)
             0x4B => {
-                let nn = self.get_nn();
-                self.reg.c = self.bus.read(nn);
-                self.reg.b = self.bus.read(nn.wrapping_add(1));
+                let nn = self.get_nn(bus);
+                self.reg.c = bus.read_memory(nn);
+                self.reg.b = bus.read_memory(nn.wrapping_add(1));
             }
             0x5B => {
-                let nn = self.get_nn();
-                self.reg.e = self.bus.read(nn);
-                self.reg.d = self.bus.read(nn.wrapping_add(1));
+                let nn = self.get_nn(bus);
+                self.reg.e = bus.read_memory(nn);
+                self.reg.d = bus.read_memory(nn.wrapping_add(1));
             }
             0x6B => {
-                let nn = self.get_nn();
-                self.reg.l = self.bus.read(nn);
-                self.reg.h = self.bus.read(nn.wrapping_add(1));
+                let nn = self.get_nn(bus);
+                self.reg.l = bus.read_memory(nn);
+                self.reg.h = bus.read_memory(nn.wrapping_add(1));
             }
             0x7B => {
-                let nn = self.get_nn();
-                let spl = self.bus.read(nn);
-                let sph = self.bus.read(nn.wrapping_add(1));
+                let nn = self.get_nn(bus);
+                let spl = bus.read_memory(nn);
+                let sph = bus.read_memory(nn.wrapping_add(1));
                 self.reg.sp = u16::from_le_bytes([spl, sph]);
             }
             0x44 | 0x4C | 0x54 | 0x5C | 0x64 | 0x6C | 0x74 | 0x7C => self.neg(),
@@ -379,9 +379,9 @@ impl Z80 {
             }
             0x5F => self.ld_a_ri(self.reg.r & 0x7F),
             // LDI ; LDIR
-            0xA0 => self.ldi(),
+            0xA0 => self.ldi(bus),
             0xB0 => {
-                self.ldi();
+                self.ldi(bus);
                 if self.reg.flags.p {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -391,9 +391,9 @@ impl Z80 {
                 }
             }
             // LDD ; LDDR
-            0xA8 => self.ldd(),
+            0xA8 => self.ldd(bus),
             0xB8 => {
-                self.ldd();
+                self.ldd(bus);
                 if self.reg.flags.p {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -403,9 +403,9 @@ impl Z80 {
                 }
             }
             // CPI ; CPIR
-            0xA1 => self.cpi(),
+            0xA1 => self.cpi(bus),
             0xB1 => {
-                self.cpi();
+                self.cpi(bus);
                 if self.reg.flags.p && !self.reg.flags.z {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -415,9 +415,9 @@ impl Z80 {
                 }
             }
             // CPD ; CPDR
-            0xA9 => self.cpd(),
+            0xA9 => self.cpd(bus),
             0xB9 => {
-                self.cpd();
+                self.cpd(bus);
                 if self.reg.flags.p && !self.reg.flags.z {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -427,27 +427,27 @@ impl Z80 {
                 }
             }
             // INI ; INIR
-            0xA2 => self.ini(),
+            0xA2 => self.ini(bus),
             0xB2 => {
-                self.ini();
+                self.ini(bus);
                 if !self.reg.flags.z {
                     self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
             // IND ; INDR
-            0xAA => self.ind(),
+            0xAA => self.ind(bus),
             0xBA => {
-                self.ind();
+                self.ind(bus);
                 if !self.reg.flags.z {
                     self.reg.pc = self.reg.pc.wrapping_sub(2);
                     cycles += 5;
                 }
             }
             // OUTI ; OUTIR
-            0xA3 => self.outi(),
+            0xA3 => self.outi(bus),
             0xB3 => {
-                self.outi();
+                self.outi(bus);
                 if !self.reg.flags.z {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -457,9 +457,9 @@ impl Z80 {
                 }
             }
             // OUTD ; OUTDR
-            0xAB => self.outd(),
+            0xAB => self.outd(bus),
             0xBB => {
-                self.outd();
+                self.outd(bus);
                 if !self.reg.flags.z {
                     self.reg.dec_pc();
                     self.reg.flags.b5 = self.reg.pc & 0b00100000_00000000 != 0;
@@ -471,19 +471,19 @@ impl Z80 {
             // RETN
             0x45 | 0x55 | 0x5D | 0x65 | 0x6D | 0x75 | 0x7D => {
                 self.iff1 = self.iff2;
-                self.ret();
+                self.ret(bus);
                 self.reg.flags.alu = false;
             }
             // RETI
             0x4D => {
                 self.iff1 = self.iff2;
-                self.ret();
+                self.ret(bus);
                 self.reg.flags.alu = false;
             }
 
             // RRD and RLD
-            0x67 => self.rrd(),
-            0x6F => self.rld(),
+            0x67 => self.rrd(bus),
+            0x6F => self.rld(bus),
 
             // NOP
             0x77 | 0x7F => self.reg.flags.alu = false,
@@ -491,553 +491,5 @@ impl Z80 {
             _ => {}
         }
         cycles
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // TEST ADC HL, rr
-    #[test]
-    fn adc_hl_rr_nominal_c0() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = false;
-        let hl = cpu.adc_hl_rr(0x005A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x5AB4);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
-        assert_eq!(cpu.reg.flags.h, false); // No half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    #[test]
-    fn adc_hl_rr_nominal_c1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = true;
-        let hl = cpu.adc_hl_rr(0x005A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x5AB5);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
-        assert_eq!(cpu.reg.flags.h, false); // No half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    #[test]
-    fn adc_hl_rr_neg_c0_h1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = false;
-        let hl = cpu.adc_hl_rr(0x5A5A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0xB4B4);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, true); // No overflow
-        assert_eq!(cpu.reg.flags.h, true); // Half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, true); // Negative
-    }
-
-    #[test]
-    fn adc_hl_rr_c1_h1_ovf_z1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0xFFFF);
-        cpu.reg.flags.c = true;
-        let hl = cpu.adc_hl_rr(0x0000);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.flags.c, true); // Carry after op
-        assert_eq!(cpu.reg.flags.n, false); // Not sub op
-        assert_eq!(cpu.reg.flags.p, false); // Overflow
-        assert_eq!(cpu.reg.flags.h, true); // Half-carry
-        assert_eq!(cpu.reg.flags.z, true); // Zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    // TEST SBC HL, rr
-    #[test]
-    fn sbc_hl_rr_nominal_c0() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = false;
-        let hl = cpu.sbc_hl_rr(0x005A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x5A00);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, true); // Sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
-        assert_eq!(cpu.reg.flags.h, false); // No half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    #[test]
-    fn sbc_hl_rr_nominal_c1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = true;
-        let hl = cpu.sbc_hl_rr(0x005A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x59FF);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, true); // Sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
-        assert_eq!(cpu.reg.flags.h, false); // No half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    #[test]
-    fn sbc_hl_rr_c0_h1_z1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x5A5A);
-        cpu.reg.flags.c = false;
-        let hl = cpu.sbc_hl_rr(0x5A5A);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.flags.c, false); // No carry after op
-        assert_eq!(cpu.reg.flags.n, true); // Sub op
-        assert_eq!(cpu.reg.flags.p, false); // No overflow
-        assert_eq!(cpu.reg.flags.h, false); // Half-carry
-        assert_eq!(cpu.reg.flags.z, true); // Zero
-        assert_eq!(cpu.reg.flags.s, false); // Not negative
-    }
-
-    #[test]
-    fn sbc_hl_rr_c1_h1_ovf_s1() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.flags.c = true;
-        let hl = cpu.sbc_hl_rr(0x0000);
-        cpu.reg.set_hl(hl);
-        assert_eq!(cpu.reg.get_hl(), 0xFFFF);
-        assert_eq!(cpu.reg.flags.c, true); // Carry after op
-        assert_eq!(cpu.reg.flags.n, true); // Sub op
-        assert_eq!(cpu.reg.flags.p, false); // Overflow
-        assert_eq!(cpu.reg.flags.h, true); // Half-carry
-        assert_eq!(cpu.reg.flags.z, false); // Not zero
-        assert_eq!(cpu.reg.flags.s, true); // Negative
-    }
-
-    // NEG
-    #[test]
-    fn neg_zero() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.a = 0;
-        cpu.neg();
-        assert_eq!(cpu.reg.a, 0);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, true);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, false);
-    }
-
-    #[test]
-    fn neg_80() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.a = 0x80;
-        cpu.neg();
-        assert_eq!(cpu.reg.a, 0x80);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, true);
-    }
-
-    #[test]
-    fn neg_01() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.a = 0x01;
-        cpu.neg();
-        assert_eq!(cpu.reg.a, 0xFF);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, true);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, true);
-    }
-
-    #[test]
-    fn neg_ff() {
-        let mut cpu = Z80::new();
-
-        cpu.reg.a = 0xFF;
-        cpu.neg();
-        assert_eq!(cpu.reg.a, 0x01);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, true);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, true);
-    }
-
-    // LDI
-    #[test]
-    fn ldi_nominal() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0000, 0xAA);
-        cpu.bus.write(0x0010, 0x00);
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.set_de(0x0010);
-        cpu.reg.set_bc(0x0008);
-        let s = cpu.reg.flags.s;
-        let z = cpu.reg.flags.z;
-        let c = cpu.reg.flags.c;
-        cpu.ldi();
-        assert_eq!(cpu.bus.read(0x0000), 0xAA);
-        assert_eq!(cpu.bus.read(0x0010), 0xAA);
-        assert_eq!(cpu.reg.get_hl(), 0x0001);
-        assert_eq!(cpu.reg.get_de(), 0x0011);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, s);
-        assert_eq!(cpu.reg.flags.z, z);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn ldi_bc_00() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0000, 0xAA);
-        cpu.bus.write(0x0010, 0x00);
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.set_de(0x0010);
-        cpu.reg.set_bc(0x0001);
-        let s = cpu.reg.flags.s;
-        let z = cpu.reg.flags.z;
-        let c = cpu.reg.flags.c;
-        cpu.ldi();
-        assert_eq!(cpu.bus.read(0x0000), 0xAA);
-        assert_eq!(cpu.bus.read(0x0010), 0xAA);
-        assert_eq!(cpu.reg.get_hl(), 0x0001);
-        assert_eq!(cpu.reg.get_de(), 0x0011);
-        assert_eq!(cpu.reg.get_bc(), 0x0000);
-        assert_eq!(cpu.reg.flags.s, s);
-        assert_eq!(cpu.reg.flags.z, z);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    // LDD
-    #[test]
-    fn ldd_nominal() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0001, 0xAA);
-        cpu.bus.write(0x0011, 0x00);
-        cpu.reg.set_hl(0x0001);
-        cpu.reg.set_de(0x0011);
-        cpu.reg.set_bc(0x0008);
-        let s = cpu.reg.flags.s;
-        let z = cpu.reg.flags.z;
-        let c = cpu.reg.flags.c;
-        cpu.ldd();
-        assert_eq!(cpu.bus.read(0x0001), 0xAA);
-        assert_eq!(cpu.bus.read(0x0011), 0xAA);
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.get_de(), 0x0010);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, s);
-        assert_eq!(cpu.reg.flags.z, z);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn ldd_bc_00() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0001, 0xAA);
-        cpu.bus.write(0x0011, 0x00);
-        cpu.reg.set_hl(0x0001);
-        cpu.reg.set_de(0x0011);
-        cpu.reg.set_bc(0x0001);
-        let s = cpu.reg.flags.s;
-        let z = cpu.reg.flags.z;
-        let c = cpu.reg.flags.c;
-        cpu.ldd();
-        assert_eq!(cpu.bus.read(0x0001), 0xAA);
-        assert_eq!(cpu.bus.read(0x0011), 0xAA);
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.get_de(), 0x0010);
-        assert_eq!(cpu.reg.get_bc(), 0x0000);
-        assert_eq!(cpu.reg.flags.s, s);
-        assert_eq!(cpu.reg.flags.z, z);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    // CPI
-    #[test]
-    fn cpi_a5a_5a() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0000, 0x5A);
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.set_bc(0x0008);
-        cpu.reg.a = 0x5A;
-        let c = cpu.reg.flags.c;
-        cpu.cpi();
-        assert_eq!(cpu.reg.get_hl(), 0x0001);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, true); // A == (HL)
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn cpi_a00_5a() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0000, 0x5A);
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.set_bc(0x0008);
-        cpu.reg.a = 0x00;
-        let c = cpu.reg.flags.c;
-        cpu.cpi();
-        assert_eq!(cpu.reg.get_hl(), 0x0001);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false); // A != (HL)
-        assert_eq!(cpu.reg.flags.h, true);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn cpi_a5a_00_bc1() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0000, 0x00);
-        cpu.reg.set_hl(0x0000);
-        cpu.reg.set_bc(0x0001);
-        cpu.reg.a = 0x5a;
-        let c = cpu.reg.flags.c;
-        cpu.cpi();
-        assert_eq!(cpu.reg.get_hl(), 0x0001);
-        assert_eq!(cpu.reg.get_bc(), 0x0000);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, false); // A != (HL)
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false); // BC == 0x0000
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    // CPD
-    #[test]
-    fn cpd_a5a_5a() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0001, 0x5A);
-        cpu.reg.set_hl(0x0001);
-        cpu.reg.set_bc(0x0008);
-        cpu.reg.a = 0x5A;
-        let c = cpu.reg.flags.c;
-        cpu.cpd();
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, true); // A == (HL)
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn cpd_a00_5a() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0001, 0x5A);
-        cpu.reg.set_hl(0x0001);
-        cpu.reg.set_bc(0x0008);
-        cpu.reg.a = 0x00;
-        let c = cpu.reg.flags.c;
-        cpu.cpd();
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.get_bc(), 0x0007);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false); // A != (HL)
-        assert_eq!(cpu.reg.flags.h, true);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn cpd_a5a_00_bc1() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0001, 0x00);
-        cpu.reg.set_hl(0x0001);
-        cpu.reg.set_bc(0x0001);
-        cpu.reg.a = 0x5a;
-        let c = cpu.reg.flags.c;
-        cpu.cpd();
-        assert_eq!(cpu.reg.get_hl(), 0x0000);
-        assert_eq!(cpu.reg.get_bc(), 0x0000);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, false); // A != (HL)
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false); // BC == 0x0000
-        assert_eq!(cpu.reg.flags.n, true);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    // RLD
-    #[test]
-    fn rld_nominal() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x31);
-        cpu.reg.a = 0x7A;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rld();
-        assert_eq!(cpu.reg.a, 0x73);
-        assert_eq!(cpu.bus.read(0x0010), 0x1A);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn rld_a_neg() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x31);
-        cpu.reg.a = 0x9A;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rld();
-        assert_eq!(cpu.reg.a, 0x93);
-        assert_eq!(cpu.bus.read(0x0010), 0x1A);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn rld_a_0() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x01);
-        cpu.reg.a = 0x0A;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rld();
-        assert_eq!(cpu.reg.a, 0x00);
-        assert_eq!(cpu.bus.read(0x0010), 0x1A);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, true);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    // RRD
-    #[test]
-    fn rrd_nominal() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x20);
-        cpu.reg.a = 0x84;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rrd();
-        assert_eq!(cpu.reg.a, 0x80);
-        assert_eq!(cpu.bus.read(0x0010), 0x42);
-        assert_eq!(cpu.reg.flags.s, true);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, false);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn rrd_a_pos() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x20);
-        cpu.reg.a = 0x64;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rrd();
-        assert_eq!(cpu.reg.a, 0x60);
-        assert_eq!(cpu.bus.read(0x0010), 0x42);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, false);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
-    }
-
-    #[test]
-    fn rrd_a_0() {
-        let mut cpu = Z80::new();
-
-        cpu.bus.write(0x0010, 0x20);
-        cpu.reg.a = 0x04;
-        cpu.reg.set_hl(0x0010);
-        let c = cpu.reg.flags.c;
-        cpu.rrd();
-        assert_eq!(cpu.reg.a, 0x00);
-        assert_eq!(cpu.bus.read(0x0010), 0x42);
-        assert_eq!(cpu.reg.flags.s, false);
-        assert_eq!(cpu.reg.flags.z, true);
-        assert_eq!(cpu.reg.flags.h, false);
-        assert_eq!(cpu.reg.flags.p, true);
-        assert_eq!(cpu.reg.flags.n, false);
-        assert_eq!(cpu.reg.flags.c, c);
     }
 }

@@ -1,4 +1,4 @@
-use crate::bus::Bus;
+use crate::bus::SystemBus;
 use crate::registers::Registers;
 
 #[allow(nonstandard_style)]
@@ -12,8 +12,6 @@ pub enum InterruptMode {
 pub struct Z80 {
     // Registers
     pub reg: Registers,
-    // Address bus and Data bus
-    pub bus: Bus,
     // System control pins
     pub n_m1: bool,
     pub n_mreq: bool,
@@ -43,7 +41,6 @@ impl Z80 {
     pub fn new() -> Self {
         Self {
             reg: Registers::new(),
-            bus: Bus::new(),
             n_m1: true,
             n_mreq: true,
             n_iorq: true,
@@ -67,7 +64,6 @@ impl Z80 {
 
     pub fn reset(&mut self) {
         self.reg.reset();
-        self.bus.reset();
         self.n_busack = true;
         self.n_busrq = true;
         self.n_halt = true;
@@ -107,9 +103,9 @@ impl Z80 {
         );
     }
 
-    pub fn memory_dump(&self, start_address: u16, end_address: u16) {
+    pub fn memory_dump<B: SystemBus>(&self, start_address: u16, end_address: u16, bus: &mut B) {
         for addr in (start_address..=end_address).step_by(16) {
-            println!("{:04X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}", addr, self.bus.read(addr), self.bus.read(addr+1), self.bus.read(addr+2), self.bus.read(addr+3), self.bus.read(addr+4), self.bus.read(addr+5), self.bus.read(addr+6), self.bus.read(addr+7), self.bus.read(addr+8), self.bus.read(addr+9), self.bus.read(addr+10), self.bus.read(addr+11), self.bus.read(addr+12), self.bus.read(addr+13), self.bus.read(addr+14), self.bus.read(addr+15));
+            println!("{:04X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}", addr, bus.read_memory(addr), bus.read_memory(addr+1), bus.read_memory(addr+2), bus.read_memory(addr+3), bus.read_memory(addr+4), bus.read_memory(addr+5), bus.read_memory(addr+6), bus.read_memory(addr+7), bus.read_memory(addr+8), bus.read_memory(addr+9), bus.read_memory(addr+10), bus.read_memory(addr+11), bus.read_memory(addr+12), bus.read_memory(addr+13), bus.read_memory(addr+14), bus.read_memory(addr+15));
         }
     }
 }
