@@ -4,11 +4,20 @@ My own implementation of the Zilog Z80 processor in RUST. The goal is to develop
 
 ## How to run it
 
-For now, this is an early, experimental, implementation that will be formatted as a RUST crate later.
+The Z80 emulator is now finished. It passes ok all the Tom Harte tests and the Zexdoc tests.
 
-I'll try to always keep it executable then just run it with cargo as followed:
+To run the zexdoc tests:
+```
+    cargo run --release --example zexdoc_test
+```
+/!\ Don't forget to uncomment the code in the ``` CALL ``` instruction (0xCD) in order to emulate the calls to CP/M print screen.
 
-    cargo run --release
+For the Tom Harte test, you'll have to clone the project containing all the JSON files with the real input / output of a Z80 CPU.
+```
+    mkdir -p tests/testdata
+    git clone https://github.com/SingleStepTests/z80 tests/testdata/z80
+```
+Once you have it, just run ```cargo test --release``` to launch the bunch of tests.
 
 You can also run some examples:
 1. Data Copy
